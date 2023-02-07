@@ -35,7 +35,7 @@ with row0[1]:
 with row0[2]:
     limit = st.slider('Minimum Movies You Both Have Rated', 1, 100, 20)
 
-row_button = st.columns((7,1,1,7))
+row_button = st.columns((6,1,1,6))
 submit = row_button[1].button('Submit')
 reset = row_button[2].button('Reset')
 result = False
