@@ -1,0 +1,11 @@
+a {
+    text-decoration: none;
+    color: white !important;
+}
+a:hover {
+    text-decoration: none;
+}
+
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
