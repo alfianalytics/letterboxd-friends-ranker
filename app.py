@@ -101,7 +101,10 @@ if result:
     else:
         row_friends = {}
         n_top = 10
-        st.header("🤝 Your Top {0} Friends".format(n_top))
+        if (len(df_friends) < 10):
+            st.header("🤝 Your Top {0} Friends".format(len(df_friends)))
+        else:
+            st.header("🤝 Your Top {0} Friends".format(n_top))
         for n_row in range(int(n_top/5)):
             row_friends[n_row] = st.columns(5)
         for i, friend in enumerate(df_friends['username']):
