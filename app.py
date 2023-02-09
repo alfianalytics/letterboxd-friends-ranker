@@ -1,8 +1,10 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+import pickle
 from deployment import scrape_friends, list_friends, recommend_movies, DOMAIN
 from pathlib import Path
+from datetime import date
 
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 css_file = current_dir / "styles" / "main.css"
@@ -47,12 +49,39 @@ if reset:
     result = False
 
 if result:
-    friends_list = list_friends(username, ftype)
-    st.write("You have {0} friends to scrape".format(len(friends_list)))
-    # bar = st.progress(PROGRESS)
-    df_friends, friends_data, df_a = scrape_friends(username, friends_list, limit)
-    df_friends = df_friends.sort_values('total_index', ascending=False).reset_index(drop=True)
-    data_siap = True
+    today = date.today()
+    filename = "{0}_{1}_{2}_{3}".format(str(today), username, ftype, str(limit))
+    df_log = pd.read_csv("log.csv")
+    df_found = df_log[(df_log['date'] == str(today)) & (df_log['username'] == username) & (df_log['ftype'] == ftype) & (df_log['limit'] == limit)].reset_index(drop=True)
+    if len(df_found) != 1:
+        # scraping process
+        friends_list = list_friends(username, ftype)
+        st.write("You have {0} friends to scrape".format(len(friends_list)))
+        df_friends, friends_data, df_a = scrape_friends(username, friends_list, limit)
+        df_friends = df_friends.sort_values('total_index', ascending=False).reset_index(drop=True)
+
+        # export file
+        df_friends.to_pickle('log/{0}_dff.pickle'.format(filename))
+        df_a.to_pickle('log/{0}_dfa.pickle'.format(filename))
+        with open('log/{0}_fdd.pickle'.format(filename), 'wb') as f:
+            pickle.dump(friends_data, f)
+        with open('log/{0}_fl.pickle'.format(filename), 'wb') as f:
+            pickle.dump(friends_list, f)
+        
+        # add new log
+        new_row = {'date':str(today), 'username':username, 'ftype':ftype, 'limit':limit}
+        df_log = df_log.append(new_row, ignore_index=True)
+        df_log.to_csv('log.csv', index=False)
+    else:
+        st.write("We already have scraped your data today")
+        with open('log/{0}_fl.pickle'.format(filename), 'rb') as f:
+            friends_list = pickle.load(f)
+        df_a = pd.read_pickle('log/{0}_dfa.pickle'.format(filename))
+        df_friends = pd.read_pickle('log/{0}_dff.pickle'.format(filename))
+        df_friends = df_friends.sort_values('total_index', ascending=False).reset_index(drop=True)
+        with open('log/{0}_fdd.pickle'.format(filename), 'rb') as f:
+            friends_data = pickle.load(f)
+
     st.write("---")
     if (len(df_friends) <= 5):
         st.header("🤝 Your Top {0} Friends".format(len(df_friends)))
