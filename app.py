@@ -27,6 +27,8 @@ if selected_sect == sections[0]:
         - Scrape your rated movies
         - Scrape your rated movies' details
         - Analyze and visualize those movies
+        """)
+        st.markdown("""
         ⚠️ Note: It takes approximately 1 seconds to scrape details from one movie, so it will take some minutes to process
         especially when you have rated many movies.
         """)
@@ -591,6 +593,8 @@ elif selected_sect == sections[2]:
         - Compute similarity between you and each of your friend
         - Rank the similarity score
         - Make movie recommendations based on your friends' movies
+        """)
+        st.markdown("""
         ⚠️ Note: It takes approximately 10 seconds to scrape 400 movies from one Letterboxd profile,
         so if you have many friends and they have watched many movies, it will take some minutes to process.
         """)
