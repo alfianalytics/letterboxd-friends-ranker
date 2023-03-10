@@ -2,7 +2,6 @@ import streamlit as st
 from htbuilder import div, big, h2, styles, p
 from htbuilder.units import rem
 import altair as alt
-import plotly.express as px
 import numpy as np
 import pandas as pd
 import pickle
