@@ -453,7 +453,7 @@ if selected_sect == sections[0]:
             #     alt.Y('mean(rating):Q', scale=alt.Scale(zero=False)),
             #     color=alt.Color(value="#00b020"),
             # ), theme=None, use_container_width=True)
-            base = alt.Chart(df_genre_merged).encode(
+            base = alt.Chart(df_genre_merged[df_genre_merged['genre'].isin(df_temp['genre'])]).encode(
                     alt.X("genre", sort=df_temp['genre'].tolist(), axis=alt.Axis(labelAngle=90))
                 )
             # st.altair_chart(base)
