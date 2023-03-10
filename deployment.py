@@ -29,6 +29,7 @@ def transform_ratings(some_str):
     except:
         return -1
 
+
 def scrape_films(username):
     movies_dict = {}
     movies_dict['id'] = []
@@ -111,6 +112,7 @@ def compare_ratings_friends(username_a, df_a, username_b, df_b):
     else:
         index = 0
     return df_liked, df_same, df_different, index
+
 
 def list_friends(username, ftype='following'):
     friends_list = []
@@ -201,6 +203,7 @@ def list_friends(username, ftype='following'):
                     friends_list.append(following)
     return friends_list
 
+
 def scrape_friends(username, friends_list, limit=20):
     with st.spinner('scraping your movies'):
         df_a = scrape_films(username)
@@ -264,3 +267,106 @@ def recommend_movies(df_friends, friends_data, df_a):
     nor_w = 0
     df_recom['index'] = r_w/5*df_recom['rating']+l_w*df_recom['liked']/df_recom['liked'].max()+fs_w*df_recom['friends_score']/df_recom['friends_score'].max()+nor_w*df_recom['no_of_rate']/df_recom['no_of_rate'].max()
     return df_recom
+
+def decade_year(year):
+    return str(int(year/10)*10)+"s"
+
+def classify_popularity(watched_by):
+    if (watched_by <= 10000):
+        return "1 - very obscure"
+    elif (watched_by <= 100000):
+        return "2 - obscure"
+    elif (watched_by <= 1000000):
+        return "3 - popular"
+    else:
+        return "4 - very popular"
+
+def classify_likeability(ltw_ratio):
+    if (ltw_ratio <= 0.1):
+        return "1 - rarely likeable"
+    elif (ltw_ratio <= 0.2):
+        return "2 - sometimes likeable"
+    elif (ltw_ratio <= 0.4):
+        return "3 - often likeable"
+    else:
+        return "4 - usually likeable"
+
+def scrape_films_details(df_film):
+    df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
+    movies_rating = {}
+    movies_rating['id'] = []
+    movies_rating['avg_rating'] = []
+    movies_rating['year'] = []
+    movies_rating['watched_by'] = []
+    movies_rating['liked_by'] = []
+    
+    movies_actor = {}
+    movies_actor['id'] = []
+    movies_actor['actor'] = []
+    movies_actor['actor_link'] = []
+    
+    movies_director = {}
+    movies_director['id'] = []
+    movies_director['director'] = []
+    movies_director['director_link'] = []
+    
+    movies_genre = {}
+    movies_genre['id'] = []
+    movies_genre['genre'] = []
+    progress = 0
+    bar = st.progress(progress)
+    for link in df_film['link']:
+        progress = progress+1
+        print('scraping details of '+df_film[df_film['link'] == link]['title'].values[0])
+        
+        with st.spinner('scraping details of '+df_film[df_film['link'] == link]['title'].values[0]):
+            id_movie = df_film[df_film['link'] == link]['id'].values[0]
+            url_movie = DOMAIN + link
+            url_movie_page = requests.get(url_movie)
+            if url_movie_page.status_code != 200:
+                encounter_error("")
+            soup_movie = BeautifulSoup(url_movie_page.content, 'html.parser')
+            for sc in soup_movie.findAll("script"):
+                if sc.string != None:
+                    if "ratingValue" in sc.string:
+                        rating = sc.string.split("ratingValue")[1].split(",")[0][2:]
+                    if "releaseYear" in sc.string:
+                        year = sc.string.split("releaseYear")[1].split(",")[0][2:].replace('"','')
+            url_stats = DOMAIN + "/esi" + link + "stats"
+            url_stats_page = requests.get(url_stats)
+            soup_stats = BeautifulSoup(url_stats_page.content, 'html.parser')
+            watched_by = int(soup_stats.findAll('li')[0].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
+            liked_by = int(soup_stats.findAll('li')[2].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
+            movies_rating['id'].append(id_movie)
+            movies_rating['avg_rating'].append(rating)
+            movies_rating['year'].append(year)
+            movies_rating['watched_by'].append(watched_by)
+            movies_rating['liked_by'].append(liked_by)
+
+            # finding the actors
+            if (soup_movie.find('div', {'class':'cast-list'}) != None):
+                for actor in soup_movie.find('div', {'class':'cast-list'}).findAll('a'):
+                    if actor.get_text().strip() != 'Show All…':
+                        movies_actor['id'].append(id_movie)
+                        movies_actor['actor'].append(actor.get_text().strip())
+                        movies_actor['actor_link'].append(actor['href'])
+
+            # finding the directors
+            if (soup_movie.find('div', {'id':'tab-crew'}) != None):
+                for director in soup_movie.find('div', {'id':'tab-crew'}).find('div').findAll('a'):
+                    movies_director['id'].append(id_movie)
+                    movies_director['director'].append(director.get_text().strip())
+                    movies_director['director_link'].append(director['href'])
+
+            # finding the genres
+            if (soup_movie.find('div', {'id':'tab-genres'}) != None):
+                for genre in soup_movie.find('div', {'id':'tab-genres'}).find('div').findAll('a'):
+                    movies_genre['id'].append(id_movie)
+                    movies_genre['genre'].append(genre.get_text().strip())
+        bar.progress(progress/len(df_film))
+    df_rating = pd.DataFrame(movies_rating)
+    df_rating['decade'] = df_rating.apply(lambda row: decade_year(int(row['year'])), axis=1)
+    df_actor = pd.DataFrame(movies_actor)
+    df_director = pd.DataFrame(movies_director)
+    df_genre = pd.DataFrame(movies_genre)
+    return df_rating, df_actor, df_director, df_genre
