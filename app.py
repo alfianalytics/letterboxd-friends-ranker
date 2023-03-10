@@ -453,7 +453,7 @@ if selected_sect == sections[0]:
             #     color=alt.Color(value="#00b020"),
             # ), use_container_width=True)
             base = alt.Chart(df_genre_merged).encode(
-                    alt.X("genre", sort=df_temp['genre'].tolist(), axis=alt.Axis(labelAngle=45))
+                    alt.X("genre", sort=df_temp['genre'].tolist(), axis=alt.Axis(labelAngle=90))
                 )
             # st.altair_chart(base)
             area = base.mark_bar(tooltip=True).encode(
@@ -519,7 +519,7 @@ if selected_sect == sections[0]:
         with row_genre_comb[0]:
             st.write("")
             base = alt.Chart(df_genre_combination[df_genre_combination['genre'].isin(df_temp_comb['genre'])]).encode(
-                        alt.X("genre", sort=df_temp_comb['genre'].tolist(), axis=alt.Axis(labelAngle=45))
+                        alt.X("genre", sort=df_temp_comb['genre'].tolist(), axis=alt.Axis(labelAngle=90))
                     )
                 # st.altair_chart(base)
             area = base.mark_bar(tooltip=True).encode(
