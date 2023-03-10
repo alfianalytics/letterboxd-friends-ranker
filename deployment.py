@@ -271,12 +271,34 @@ def recommend_movies(df_friends, friends_data, df_a):
 def decade_year(year):
     return str(int(year/10)*10)+"s"
 
+def classify_popularity(watched_by):
+    if (watched_by <= 10000):
+        return "1 - very obscure"
+    elif (watched_by <= 100000):
+        return "2 - obscure"
+    elif (watched_by <= 1000000):
+        return "3 - popular"
+    else:
+        return "4 - very popular"
+
+def classify_likeability(ltw_ratio):
+    if (ltw_ratio <= 0.1):
+        return "1 - rarely likeable"
+    elif (ltw_ratio <= 0.2):
+        return "2 - sometimes likeable"
+    elif (ltw_ratio <= 0.4):
+        return "3 - often likeable"
+    else:
+        return "4 - usually likeable"
 
 def scrape_films_details(df_film):
+    df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
     movies_rating = {}
     movies_rating['id'] = []
     movies_rating['avg_rating'] = []
     movies_rating['year'] = []
+    movies_rating['watched_by'] = []
+    movies_rating['liked_by'] = []
     
     movies_actor = {}
     movies_actor['id'] = []
@@ -310,9 +332,16 @@ def scrape_films_details(df_film):
                         rating = sc.string.split("ratingValue")[1].split(",")[0][2:]
                     if "releaseYear" in sc.string:
                         year = sc.string.split("releaseYear")[1].split(",")[0][2:].replace('"','')
+            url_stats = DOMAIN + "/esi" + link + "stats"
+            url_stats_page = requests.get(url_stats)
+            soup_stats = BeautifulSoup(url_stats_page.content, 'html.parser')
+            watched_by = int(soup_stats.findAll('li')[0].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
+            liked_by = int(soup_stats.findAll('li')[2].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
             movies_rating['id'].append(id_movie)
             movies_rating['avg_rating'].append(rating)
             movies_rating['year'].append(year)
+            movies_rating['watched_by'].append(watched_by)
+            movies_rating['liked_by'].append(liked_by)
 
             # finding the actors
             if (soup_movie.find('div', {'class':'cast-list'}) != None):

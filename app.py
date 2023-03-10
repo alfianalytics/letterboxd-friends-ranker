@@ -6,7 +6,7 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 import pickle
-from deployment import scrape_films_details, scrape_films, scrape_friends, list_friends, recommend_movies, DOMAIN
+from deployment import scrape_films_details, scrape_films, scrape_friends, list_friends, recommend_movies, DOMAIN, classify_popularity, classify_likeability
 from pathlib import Path
 from datetime import date
 
@@ -25,10 +25,10 @@ if selected_sect == sections[0]:
     with st.expander("ℹ️ What will this app do?"):
         st.markdown("""
         - Scrape your rated movies
-        - Scrape your rated movies' details (year, average ratings, genre, actor, director)
+        - Scrape your rated movies' details
         - Analyze and visualize those movies
-        ⚠️ Note: It takes approximately 10 seconds to scrape 400 movies from one Letterboxd profile,
-        so if you have many friends and they have watched many movies, it will take some minutes to process.
+        ⚠️ Note: It takes approximately 1 seconds to scrape details from one movie, so it will take some minutes to process
+        especially when you have rated many movies.
         """)
     username = st.text_input('Letterboxd Username')
     row_button = st.columns((6,1,1,6))
@@ -128,19 +128,23 @@ if selected_sect == sections[0]:
             )
         # data_temp = df_film['rating'].astype(str).value_counts().reset_index()
         # data_temp.rename(columns = {'index':'rating', 'rating':'count'}, inplace=True)
+        df_rating['ltw_ratio'] = df_rating['liked_by']/df_rating['watched_by']
+        df_rating['popularity'] = df_rating.apply(lambda row: classify_popularity(row['watched_by']), axis=1)
+        df_rating['likeability'] = df_rating.apply(lambda row: classify_likeability(row['ltw_ratio']), axis=1)
         df_rating_merged = pd.merge(df_film, df_rating)
         df_rating_merged['rating'] = df_rating_merged['rating'].astype(float)
         df_rating_merged['avg_rating'] = df_rating_merged['avg_rating'].astype(float)
         df_rating_merged['difference'] = df_rating_merged['rating']-df_rating_merged['avg_rating']
         df_rating_merged['difference_abs'] = abs(df_rating_merged['difference'])
+        
         st.write("")
         row_year = st.columns(2)
 
         with row_year[0]:
-            st.subheader("Rated Movies by Release Year")
+            st.subheader("When were Your Movies Released?")
             st.write("")
             st.altair_chart(alt.Chart(df_rating_merged).mark_bar(tooltip=True).encode(
-                alt.X("year:O", axis=alt.Axis(labelAngle=-45)),
+                alt.X("year:O", axis=alt.Axis(labelAngle=90)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), use_container_width=True)
@@ -154,18 +158,27 @@ if selected_sect == sections[0]:
                        ))
 
         with row_year[1]:
-            st.subheader("Rated Movies by Decade")
+            st.subheader("Which Decade were Your Movies Released in?")
             st.write("")
             st.altair_chart(alt.Chart(df_rating_merged).mark_bar(tooltip=True).encode(
                 alt.X("decade", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), use_container_width=True)
+            liked = ""
+            if (df_rating_merged[df_rating_merged['liked'] == True].shape[0] != 0):
+                liked = """Your favorite decade is probably **{}** since your liked movies mostly were released in that decade, with
+                {} movies.""".format(df_rating_merged[df_rating_merged['liked'] == True]['decade'].value_counts().index[0],
+                       df_rating_merged[df_rating_merged['liked'] == True]['decade'].value_counts().values[0])
             st.markdown("""
-            You mostly watched movies that were released in the **{}**, you rated {} movies from that decade.
-            """.format(df_rating_merged['decade'].value_counts().index[0], df_rating_merged['decade'].value_counts().values[0]))
+            You mostly rated movies that were released in the **{}**, you rated {} movies from that decade.
+            {}
+            """.format(df_rating_merged['decade'].value_counts().index[0], df_rating_merged['decade'].value_counts().values[0], liked))
 
         st.write("")
+        # st.dataframe(df_rating_merged)
+        
+        
         row_rating = st.columns(2)
         
         with row_rating[0]:
@@ -189,7 +202,7 @@ if selected_sect == sections[0]:
                 ave_rat = 'lower'
 
             st.markdown("""
-            It looks like on average you rate movies **{}** than the average Letterboxd user, **by about {} points**.
+            It looks like on average you rated movies **{}** than the average Letterboxd user, **by about {} points**.
             You differed from the crowd most on the movie **[{}]({})** where you rated the movie {} stars while the general users rated the movie {}.
             """.format(ave_rat, abs(round(df_rating_merged['difference'].mean(),2)),
                        df_rating_merged[df_rating_merged['difference_abs'] == df_rating_merged['difference_abs'].max()]['title'].values[0],
@@ -210,60 +223,363 @@ if selected_sect == sections[0]:
             """)
         st.write("")
 
+        row_popularity = st.columns(2)
+        with row_popularity[0]:
+            st.subheader("How Popular are Your Movies?")
+            st.write("")
+            st.altair_chart(alt.Chart(df_rating_merged).mark_bar(tooltip=True).encode(
+                alt.X("popularity", axis=alt.Axis(labelAngle=0)),
+                y='count()',
+                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            ), use_container_width=True)
+            popular = ""
+            if (df_rating_merged['popularity'].value_counts().index[0] == '3 - popular'):
+                popular = "As expected, you mostly rated movies that are popular among Letterboxd users."
+            else:
+                popular = "Wow, you have a very unique taste because you mostly don't watch popular movies."
+            st.markdown("""
+            {} Your most obscure movie is **[{}]({})** with just **{:,} users watched**, your most popular movie is **[{}]({})** with **{:,} users watched**.
+            """.format(popular,
+                       df_rating_merged[df_rating_merged['watched_by'] == df_rating_merged['watched_by'].min()]['title'].values[0],
+                       DOMAIN + df_rating_merged[df_rating_merged['watched_by'] == df_rating_merged['watched_by'].min()]['link'].values[0],
+                       df_rating_merged['watched_by'].min(),
+                       df_rating_merged[df_rating_merged['watched_by'] == df_rating_merged['watched_by'].max()]['title'].values[0],
+                       DOMAIN + df_rating_merged[df_rating_merged['watched_by'] == df_rating_merged['watched_by'].max()]['link'].values[0],
+                       df_rating_merged['watched_by'].max()))
+            with st.expander("Popularity classification"):
+                st.markdown("""
+                Popularity is determined by number of watches.
+                - <= 10,000 -> very obscure
+                - 10,101 - 100,000 -> obscure
+                - 100,001 - 1,000,000 -> popular
+                - \> 1,000,000 -> very popular
+                """)
+        with row_popularity[1]:
+            st.subheader("How Likeable are Your Movies?")
+            st.write("")
+            st.altair_chart(alt.Chart(df_rating_merged).mark_bar(tooltip=True).encode(
+                alt.X("likeability", axis=alt.Axis(labelAngle=0)),
+                y='count()',
+                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            ), use_container_width=True)
+            unlikeable = ""
+            if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 0):
+                if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 1):
+                    unlikeable = "Wow, you liked movies that are rarely likeable, you really followed your heart and don't care what others think."
+                else:
+                    unlikeable = """
+                    Wow, you liked a movie that is rarely likeable, it's **[{}]({}) ({}\% users liked)**, you must have a genuine opinion on this movie.
+                    """.format(df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)]['title'].values[0],
+                               DOMAIN + df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)]['link'].values[0],
+                               round(df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)]['ltw_ratio'].values[0]*100,2))
+            mostly = ""
+            if (df_rating_merged['likeability'].value_counts().index[0] == '3 - often likeable'):
+                mostly = "You mostly rated movies that are often likeable, it possibly means that your movies are mostly good movies."
+            elif ((df_rating_merged[df_rating_merged['likeability'] == '1 - rarely likeable'].shape[0] +
+                  df_rating_merged[df_rating_merged['likeability'] == '2 - sometimes likeable'].shape[0]) >
+                  (df_rating_merged[df_rating_merged['likeability'] == '3 - often likeable'].shape[0] +
+                  df_rating_merged[df_rating_merged['likeability'] == '4 - usually likeable'].shape[0])):
+                mostly = "You mostly rated movies that are less likeable, it possibly means that you've been watching bad movies all this time."
+            st.markdown("""
+            {} {} Your most likeable movie is **[{}]({})** with **{}\% users liked**, your least likeable movie is **[{}]({})** with just **{}\% users liked**.
+            """.format(unlikeable, mostly,
+                       df_rating_merged[df_rating_merged['ltw_ratio'] == df_rating_merged['ltw_ratio'].max()]['title'].values[0],
+                       DOMAIN + df_rating_merged[df_rating_merged['ltw_ratio'] == df_rating_merged['ltw_ratio'].max()]['link'].values[0],
+                       round(df_rating_merged['ltw_ratio'].max()*100,2),
+                       df_rating_merged[df_rating_merged['ltw_ratio'] == df_rating_merged['ltw_ratio'].min()]['title'].values[0],
+                       DOMAIN + df_rating_merged[df_rating_merged['ltw_ratio'] == df_rating_merged['ltw_ratio'].min()]['link'].values[0],
+                       round(df_rating_merged['ltw_ratio'].min()*100,2))
+                       )
+            with st.expander("Likeability classification"):
+                st.markdown("""
+                Likeability is determined by number of likes to number of watches ratio.
+                - <= 0.1 -> rarely likeable
+                - 0.1 - 0.2 -> sometimes likeable
+                - 0.2 - 0.4 -> often likeable
+                - \> 0.4 -> usually likeable
+                """)
+
+
         df_director_merged = pd.merge(df_film, df_director)
         df_actor_merged = pd.merge(df_film, df_actor)
+
         df_temp = df_director['director'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'director', 'director':'count'}, inplace=True)
-        df_temp_2 = df_director_merged.groupby(['director', 'director_link']).agg({'liked':'sum'})
+        df_director_merged['rating'] = df_director_merged['rating'].astype(float)
+        df_temp_2 = df_director_merged.groupby(['director', 'director_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
-        n_director = df_temp.iloc[10]['count']
+        n_director = df_temp.iloc[9]['count']
         df_temp = df_temp[df_temp['count']>=n_director]
         
         # df_temp = df_temp[df_temp['count']!=1]
         
         row_director = st.columns(2)
         with row_director[0]:
-            st.subheader("Movies Rated by Director")
+            st.subheader("Your Top Directors")
             st.write("")
-            st.altair_chart(alt.Chart(df_director_merged[df_director_merged['director'].isin(df_temp['director'])]).mark_bar(tooltip=True).encode(
-                y=alt.X("director", sort='-x', axis=alt.Axis(labelAngle=0)),
-                x='count()',
-                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
-            st.markdown("""
-            You rated **{}** movies that were directed by **[{}]({})**. Your favorite director is probably **[{}]({})** which you liked **{}** of
-            his/her movies.
-            """.format(df_temp['count'].values[0], df_temp['director'].values[0], DOMAIN+df_temp['director_link'].values[0],
-                       df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0],
-                       DOMAIN+df_temp[df_temp['liked']==df_temp['liked'].max()]['director_link'].values[0],
-                       df_temp['liked'].max()))
-
-        df_temp_actor = df_actor['actor'].value_counts().reset_index()
-        df_temp_actor.rename(columns = {'index':'actor', 'actor':'count'}, inplace=True)
-        df_temp_actor = df_temp_actor.sort_values('count', ascending=False).reset_index(drop=True)
-        # df_temp_actor = df_temp_actor[df_temp_actor['count']!=1]
-        n_actor = df_temp_actor.iloc[10]['count']
-        df_temp_actor = df_temp_actor[df_temp_actor['count']>=n_actor]
-        # df_temp_actor = df_temp_actor[:10]
-        with row_director[1]:
-            st.subheader("Movies Rated by Actor")
-            st.write("")
-            st.altair_chart(alt.Chart(df_actor_merged[df_actor_merged['actor'].isin(df_temp_actor['actor'])]).mark_bar(tooltip=True).encode(
-                y=alt.X("actor", sort='-x', axis=alt.Axis(labelAngle=0)),
-                x='count()',
-                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
-
-
-
+            # st.dataframe(df_temp)
+            base = alt.Chart(df_director_merged[df_director_merged['director'].isin(df_temp['director'])]).encode(
+                    alt.Y("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0))
+                )
             
+            area = base.mark_bar(tooltip=True).encode(
+                alt.X('count()',
+                    axis=alt.Axis(title='Count of Records')),
+                    color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            )
+            line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
+                alt.Y("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0)),
+                alt.X('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                color=alt.Color(value="#40bcf4"),
+            )
+            # st.altair_chart(alt.Chart(df_director_merged[df_director_merged['director'].isin(df_temp['director'])]).mark_bar(tooltip=True).encode(
+            #     y=alt.X("director", sort='-x', axis=alt.Axis(labelAngle=0)),
+            #     x='count()',
+            #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            # ), use_container_width=True)
+            # st.altair_chart(alt.Chart(df_temp).mark_line().encode(
+            #     alt.Y("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0)),
+            #     alt.X('rating', scale=alt.Scale(zero=False)),
+            #     color=alt.Color(value="#00b020"),
+            # ), use_container_width=True)
+            st.altair_chart(alt.layer(area, line).resolve_scale(
+                x = 'independent'
+            ), use_container_width=True)
+            if (df_temp['liked'].max() != 0):
+                if (df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0] != df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0]):
+                    st.markdown("""
+                    You rated **{}** movies that were directed by **[{}]({})**. Your favorite director is probably **[{}]({})** which you
+                    gave average rating of **{}**, or **[{}]({})** which you liked **{}** of his/her movies.
+                    """.format(df_temp['count'].values[0], df_temp['director'].values[0], DOMAIN+df_temp['director_link'].values[0],
+                            df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0],
+                            DOMAIN+df_temp[df_temp['rating']==df_temp['rating'].max()]['director_link'].values[0],
+                            round(df_temp['rating'].max(), 2),
+                            df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0],
+                            DOMAIN+df_temp[df_temp['liked']==df_temp['liked'].max()]['director_link'].values[0],
+                            df_temp['liked'].max()))
+                else:
+                    st.markdown("""
+                    You rated **{}** movies that were directed by **[{}]({})**. Your favorite director is probably **[{}]({})** which you
+                    gave average rating of **{}** and liked **{}** of his/her movies.
+                    """.format(df_temp['count'].values[0], df_temp['director'].values[0], DOMAIN+df_temp['director_link'].values[0],
+                            df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0],
+                            DOMAIN+df_temp[df_temp['rating']==df_temp['rating'].max()]['director_link'].values[0],
+                            round(df_temp['rating'].max(), 2),
+                            df_temp['liked'].max()))
+            else:
+                st.markdown("""
+                You rated **{}** movies that were directed by **[{}]({})**. Your favorite director is probably **[{}]({})** which you
+                    gave average rating of **{}**.
+                """.format(df_temp['count'].values[0], df_temp['director'].values[0], DOMAIN+df_temp['director_link'].values[0],
+                            df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0],
+                            DOMAIN+df_temp[df_temp['rating']==df_temp['rating'].max()]['director_link'].values[0],
+                            round(df_temp['rating'].max(), 2)))
+            
+
+        df_temp = df_actor['actor'].value_counts().reset_index()
+        df_temp.rename(columns = {'index':'actor', 'actor':'count'}, inplace=True)
+        df_actor_merged['rating'] = df_actor_merged['rating'].astype(float)
+        df_temp_2 = df_actor_merged.groupby(['actor', 'actor_link']).agg({'liked':'sum', 'rating':'mean'})
+        df_temp_2 = df_temp_2.reset_index()
+        df_temp = pd.merge(df_temp_2, df_temp)
+        df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
+        # df_temp = df_temp[df_temp['count']!=1]
+        n_actor = df_temp.iloc[9]['count']
+        df_temp = df_temp[df_temp['count']>=n_actor]
+        # df_temp = df_temp[:10]
+        with row_director[1]:
+            st.subheader("Your Top Actors")
+            st.write("")
+            # st.altair_chart(alt.Chart(df_actor_merged[df_actor_merged['actor'].isin(df_temp['actor'])]).mark_bar(tooltip=True).encode(
+            #     y=alt.X("actor", sort='-x', axis=alt.Axis(labelAngle=0)),
+            #     x='count()',
+            #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            # ), use_container_width=True)
+            base = alt.Chart(df_actor_merged[df_actor_merged['actor'].isin(df_temp['actor'])]).encode(
+                    alt.Y("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0))
+                )
+            
+            area = base.mark_bar(tooltip=True).encode(
+                alt.X('count()',
+                    axis=alt.Axis(title='Count of Records')),
+                    color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            )
+            line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
+                alt.Y("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0)),
+                alt.X('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                color=alt.Color(value="#40bcf4"),
+            )
+            st.altair_chart(alt.layer(area, line).resolve_scale(
+                x = 'independent'
+            ), use_container_width=True)
+            if (df_temp['liked'].max() != 0):
+                st.markdown("""
+                You rated **{}** movies starring **[{}]({})**. Your favorite actor is probably **[{}]({})** which you liked **{}** of
+                his/her movies.
+                """.format(df_temp['count'].values[0], df_temp['actor'].values[0], DOMAIN+df_temp['actor_link'].values[0],
+                        df_temp[df_temp['liked']==df_temp['liked'].max()]['actor'].values[0],
+                        DOMAIN+df_temp[df_temp['liked']==df_temp['liked'].max()]['actor_link'].values[0],
+                        df_temp['liked'].max()))
+            else:
+                st.markdown("""
+                You rated **{}** movies starring **[{}]({})**.
+                """.format(df_temp['count'].values[0], df_temp['actor'].values[0], DOMAIN+df_temp['actor_link'].values[0]))
+        st.write("")
+        st.subheader("Genre Breakdown")
+        row_genre = st.columns((2,1))
+        df_genre_merged = pd.merge(df_film, df_genre)
+        df_temp = df_genre['genre'].value_counts().reset_index()
+        df_temp.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
+        df_genre_merged['rating'] = df_genre_merged['rating'].astype(float)
+        df_temp_2 = df_genre_merged.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
+        df_temp_2 = df_temp_2.reset_index()
+        df_temp = pd.merge(df_temp_2, df_temp)
+        df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
         
+        with row_genre[0]:
+            
+            st.write("")
+            # st.altair_chart(alt.Chart(df_genre_merged).mark_bar(tooltip=True).encode(
+            #     alt.X("genre", sort='-y', axis=alt.Axis(labelAngle=45)),
+            #     y='count()',
+            #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            # ), use_container_width=True)
+            # st.altair_chart(alt.Chart(df_genre_merged).mark_line(tooltip=True).encode(
+            #     alt.X("genre", sort='-y', axis=alt.Axis(labelAngle=45)),
+            #     alt.Y('mean(rating):Q', scale=alt.Scale(zero=False)),
+            #     color=alt.Color(value="#00b020"),
+            # ), use_container_width=True)
+            base = alt.Chart(df_genre_merged).encode(
+                    alt.X("genre", sort=df_temp['genre'].tolist(), axis=alt.Axis(labelAngle=45))
+                )
+            # st.altair_chart(base)
+            area = base.mark_bar(tooltip=True).encode(
+                alt.Y('count()',
+                    axis=alt.Axis(title='Count of Records')),
+                    color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            )
+            line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
+                    alt.X('genre', sort=df_temp['genre'].tolist()),
+                    alt.Y('rating',
+                        axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                        color=alt.Color(value="#40bcf4")
+                )
+            # line = base.mark_line(tooltip=True).encode(
+            #         alt.Y('mean(rating):Q',
+            #             axis=alt.Axis(title='Average Rating'), scale=alt.Scale(zero=False)),
+            #             color=alt.Color(value="#ff8000")
+            #     )
+            st.altair_chart(alt.layer(area, line).resolve_scale(
+                y = 'independent'
+            ), use_container_width=True)
+        with row_genre[1]:
+            liked = ""
+            if (df_temp['liked'].max() != 0):
+                liked = "You mostly liked **{}** movies with {} movies.".format(df_temp[df_temp['liked']==df_temp['liked'].max()]['genre'].values[0],
+                       df_temp[df_temp['liked']==df_temp['liked'].max()]['liked'].values[0])
+            st.markdown("""
+            Seems like you're not a great fan of **{}** movies, you gave average rating of {} on that genre.
+            You really gave good ratings on **{}** movies, with average rating of {}.
+            You mostly rated **{}** movies with {} movies. {}
+            """.format(df_temp[df_temp['rating']==df_temp['rating'].min()]['genre'].values[0],
+                       round(df_temp[df_temp['rating']==df_temp['rating'].min()]['rating'].values[0], 2),
+                       df_temp[df_temp['rating']==df_temp['rating'].max()]['genre'].values[0],
+                       round(df_temp[df_temp['rating']==df_temp['rating'].max()]['rating'].values[0], 2),
+                       df_temp[df_temp['count']==df_temp['count'].max()]['genre'].values[0],
+                       df_temp[df_temp['liked']==df_temp['liked'].max()]['count'].values[0],
+                       liked))
+        
+        
+        df_genre_combination = pd.DataFrame(columns=df_genre_merged.columns)
+        for i in range(len(df_temp['genre'].tolist())):
+            for j in range(i+1, len(df_temp['genre'].tolist())):
+                df_ha = df_genre_merged[(df_genre_merged['genre'] == df_temp['genre'].tolist()[i]) | (df_genre_merged['genre'] == df_temp['genre'].tolist()[j])]
+                if len(df_ha) != 0:
+                    df_ha['genre'] = df_temp['genre'].tolist()[i] + " & " + df_temp['genre'].tolist()[j]
+                    df_ha = df_ha[df_ha.duplicated('id')]
+                    df_genre_combination = pd.concat([df_genre_combination, df_ha]).reset_index(drop=True)
+        
+        df_temp_comb = df_genre_combination['genre'].value_counts().reset_index()
+        df_temp_comb.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
+        df_genre_combination['rating'] = df_genre_combination['rating'].astype(float)
+        df_genre_combination['liked'] = df_genre_combination['liked'].astype(int)
+        df_temp_comb_2 = df_genre_combination.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
+        df_genre_combination['liked'] = df_genre_combination['liked'].astype(bool)
+        df_temp_comb_2 = df_temp_comb_2.reset_index()
+        df_temp_comb = pd.merge(df_temp_comb_2, df_temp_comb)
+        df_temp_comb = df_temp_comb.sort_values('count', ascending=False).reset_index(drop=True)
+        n_genre = df_temp_comb.iloc[19]['count']
+        df_temp_comb = df_temp_comb[df_temp_comb['count']>=n_genre]
 
+        st.subheader("Top Genre Combinations Breakdown")
+        row_genre_comb = st.columns((2,1))
+        with row_genre_comb[0]:
+            st.write("")
+            base = alt.Chart(df_genre_combination[df_genre_combination['genre'].isin(df_temp_comb['genre'])]).encode(
+                        alt.X("genre", sort=df_temp_comb['genre'].tolist(), axis=alt.Axis(labelAngle=45))
+                    )
+                # st.altair_chart(base)
+            area = base.mark_bar(tooltip=True).encode(
+                alt.Y('count()',
+                    axis=alt.Axis(title='Count of Records')),
+                    color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            )
+            # st.altair_chart(area)
+            line = alt.Chart(df_temp_comb).mark_line(interpolate='monotone').encode(
+                    alt.X('genre', axis=alt.Axis(title='genre combination'), sort=df_temp_comb['genre'].tolist()),
+                    alt.Y('rating',
+                        axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                        color=alt.Color(value="#40bcf4")
+                )
+            # st.altair_chart(line)
+            st.altair_chart(alt.layer(area, line).resolve_scale(
+                y = 'independent'
+            ), use_container_width=True)
+        with row_genre_comb[1]:
+            top_2 = ""
+            if (pd.DataFrame(df_temp_comb['genre'][0].split(" & ")).isin(df_temp.iloc[:2]['genre'].tolist()).sum()[0] == 0):
+                top_2 = """
+                It's a little bit surprising that your mostly rated genre combination (**{}**) is not your top 2 genres (**{} & {}**).
+                """.format(df_temp_comb['genre'][0], df_temp['genre'][0], df_temp['genre'][1])
+            elif ((pd.DataFrame(df_temp_comb['genre'][0].split(" & ")).isin(df_temp.iloc[:2]['genre'].tolist()).sum()[0] == 1)):
+                top_2 = "Well, it's no surprise that your mostly rated genre combination (**{}**) consists of one of your top 2 genres (**{}**).".format(df_temp_comb['genre'][0],
+                                                                                                                                                         df_temp.iloc[:2][df_temp.iloc[:2]['genre'].isin(df_temp_comb['genre'][0].split(" & "))]['genre'].values[0])
+            elif ((pd.DataFrame(df_temp_comb['genre'][0].split(" & ")).isin(df_temp.iloc[:2]['genre'].tolist()).sum()[0] == 2)):
+                top_2 = "Well, it's no surprise that your mostly rated genre combination consists of your top 2 genres (**{}**).".format(df_temp_comb['genre'][0])
+            st.markdown("""It's a common thing that a movie is categorized into more than 1 genre, so we'll look deeper into the genre combinations
+            to get a better understanding of your movies.
+            """)
 
+            low = ""
+            if (pd.DataFrame(df_temp_comb[df_temp_comb['rating'] == df_temp_comb['rating'].min()]['genre'].values[0].split(" & ")).isin(df_temp[df_temp['rating'] == df_temp['rating'].min()]['genre'].values.tolist()).sum()[0] != 0):
+                low = """Once again, **{}** movies are definitely not your cup of tea, even when it's combined with other genre, the combination of **{}**
+                has the lowest average rating ({}) compared to your other top genre combinations.
+                """.format(df_temp[df_temp['rating'] == df_temp['rating'].min()]['genre'].values[0],
+                           df_temp_comb[df_temp_comb['rating'] == df_temp_comb['rating'].min()]['genre'].values[0],
+                           round(df_temp_comb['rating'].min(),2))
+            else:
+                low = """Genre combination with the lowest average rating you gave among your other top genre combinations is **{}** with {}.
+                """.format(df_temp_comb[df_temp_comb['rating'] == df_temp_comb['rating'].min()]['genre'].values[0],
+                           round(df_temp_comb['rating'].min(),2))
+            
+            high = ""
+            if (pd.DataFrame(df_temp_comb[df_temp_comb['rating'] == df_temp_comb['rating'].max()]['genre'].values[0].split(" & ")).isin(df_temp[df_temp['rating'] == df_temp['rating'].max()]['genre'].values.tolist()).sum()[0] != 0):
+                high = """You seem to have a lot appreciation for **{}** movies, the combination of **{}**
+                has the highest average rating ({}) compared to your other top genre combinations.
+                """.format(df_temp[df_temp['rating'] == df_temp['rating'].max()]['genre'].values[0],
+                           df_temp_comb[df_temp_comb['rating'] == df_temp_comb['rating'].max()]['genre'].values[0],
+                           round(df_temp_comb['rating'].max(),2))
+            else:
+                high = """You gave the highest average rating to **{}** movies with {}.
+                """.format(df_temp_comb[df_temp_comb['rating'] == df_temp_comb['rating'].max()]['genre'].values[0],
+                            round(df_temp_comb['rating'].max(),2))
+            
+            st.markdown("{} {} {}".format(top_2, low, high))
+            
 elif selected_sect == sections[1]:
-    print('b')
+    st.write("Still not ready hehe")
 elif selected_sect == sections[2]:
     st.title('📽️ Letterboxd Friends Ranker (+ Movie Recommendations)')
     st.write("See which friend has the most similar taste in movies to yours based on the ratings and likes of the movies you both have watched 🍿")
