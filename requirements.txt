@@ -6,4 +6,3 @@ streamlit
 pathlib
 datetime
 htbuilder
-altair==4.2.0

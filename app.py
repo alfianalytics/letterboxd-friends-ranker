@@ -148,7 +148,7 @@ if selected_sect == sections[0]:
                 alt.X("year:O", axis=alt.Axis(labelAngle=90)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             st.markdown("""
             Looks like the average release date is around **{}**, with your oldest movie being **[{}]({})** ({}) and your latest being **[{}]({})** ({}).
             Your movies mostly were released in {}.
@@ -165,7 +165,7 @@ if selected_sect == sections[0]:
                 alt.X("decade", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             liked = ""
             if (df_rating_merged[df_rating_merged['liked'] == True].shape[0] != 0):
                 liked = """Your favorite decade is probably **{}** since your liked movies mostly were released in that decade, with
@@ -189,13 +189,13 @@ if selected_sect == sections[0]:
             #     x='rating',
             #     y='count',
             #     color=alt.Color(value="#00b020"),
-            # ), use_container_width=True)
+            # ), theme=None, use_container_width=True)
             df_film['rating'] = df_film['rating'].astype(str)
             st.altair_chart(alt.Chart(df_film).mark_bar(tooltip=True).encode(
                 alt.X("rating", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             
             if (df_rating_merged['difference'].mean() > 0):
                 ave_rat = 'higher'
@@ -217,7 +217,7 @@ if selected_sect == sections[0]:
                 alt.X("avg_rating", bin=True, axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             st.markdown("""
             Here is the distribution of average rating by other Letterboxd users for the movies that you've rated. Note that this is a distribution of
             averages, which explains the lack of extreme values!
@@ -232,7 +232,7 @@ if selected_sect == sections[0]:
                 alt.X("popularity", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             popular = ""
             if (df_rating_merged['popularity'].value_counts().index[0] == '3 - popular'):
                 popular = "As expected, you mostly rated movies that are popular among Letterboxd users."
@@ -262,7 +262,7 @@ if selected_sect == sections[0]:
                 alt.X("likeability", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             unlikeable = ""
             if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 0):
                 if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 1):
@@ -339,15 +339,15 @@ if selected_sect == sections[0]:
             #     y=alt.X("director", sort='-x', axis=alt.Axis(labelAngle=0)),
             #     x='count()',
             #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            # ), use_container_width=True)
+            # ), theme=None, use_container_width=True)
             # st.altair_chart(alt.Chart(df_temp).mark_line().encode(
             #     alt.Y("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0)),
             #     alt.X('rating', scale=alt.Scale(zero=False)),
             #     color=alt.Color(value="#00b020"),
-            # ), use_container_width=True)
+            # ), theme=None, use_container_width=True)
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 x = 'independent'
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             if (df_temp['liked'].max() != 0):
                 if (df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0] != df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0]):
                     st.markdown("""
@@ -397,7 +397,7 @@ if selected_sect == sections[0]:
             #     y=alt.X("actor", sort='-x', axis=alt.Axis(labelAngle=0)),
             #     x='count()',
             #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            # ), use_container_width=True)
+            # ), theme=None, use_container_width=True)
             base = alt.Chart(df_actor_merged[df_actor_merged['actor'].isin(df_temp['actor'])]).encode(
                     alt.Y("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0))
                 )
@@ -414,7 +414,7 @@ if selected_sect == sections[0]:
             )
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 x = 'independent'
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
             if (df_temp['liked'].max() != 0):
                 st.markdown("""
                 You rated **{}** movies starring **[{}]({})**. Your favorite actor is probably **[{}]({})** which you liked **{}** of
@@ -446,12 +446,12 @@ if selected_sect == sections[0]:
             #     alt.X("genre", sort='-y', axis=alt.Axis(labelAngle=45)),
             #     y='count()',
             #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            # ), use_container_width=True)
+            # ), theme=None, use_container_width=True)
             # st.altair_chart(alt.Chart(df_genre_merged).mark_line(tooltip=True).encode(
             #     alt.X("genre", sort='-y', axis=alt.Axis(labelAngle=45)),
             #     alt.Y('mean(rating):Q', scale=alt.Scale(zero=False)),
             #     color=alt.Color(value="#00b020"),
-            # ), use_container_width=True)
+            # ), theme=None, use_container_width=True)
             base = alt.Chart(df_genre_merged).encode(
                     alt.X("genre", sort=df_temp['genre'].tolist(), axis=alt.Axis(labelAngle=90))
                 )
@@ -474,7 +474,7 @@ if selected_sect == sections[0]:
             #     )
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 y = 'independent'
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
         with row_genre[1]:
             liked = ""
             if (df_temp['liked'].max() != 0):
@@ -521,23 +521,20 @@ if selected_sect == sections[0]:
             base = alt.Chart(df_genre_combination[df_genre_combination['genre'].isin(df_temp_comb['genre'])]).encode(
                         alt.X("genre", sort=df_temp_comb['genre'].tolist(), axis=alt.Axis(labelAngle=90))
                     )
-                # st.altair_chart(base)
             area = base.mark_bar(tooltip=True).encode(
                 alt.Y('count()',
                     axis=alt.Axis(title='Count of Records')),
                     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             )
-            # st.altair_chart(area)
             line = alt.Chart(df_temp_comb).mark_line(interpolate='monotone').encode(
                     alt.X('genre', axis=alt.Axis(title='genre combination'), sort=df_temp_comb['genre'].tolist()),
                     alt.Y('rating',
                         axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
                         color=alt.Color(value="#40bcf4")
                 )
-            # st.altair_chart(line)
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 y = 'independent'
-            ), use_container_width=True)
+            ), theme=None, use_container_width=True)
         with row_genre_comb[1]:
             top_2 = ""
             if (pd.DataFrame(df_temp_comb['genre'][0].split(" & ")).isin(df_temp.iloc[:2]['genre'].tolist()).sum()[0] == 0):
