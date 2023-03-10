@@ -9,11 +9,15 @@ from deployment import scrape_films_details, scrape_films, scrape_friends, list_
 from pathlib import Path
 from datetime import date
 
+if 'sidebar_state' not in st.session_state:
+    st.session_state.sidebar_state = 'collapsed'
+
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 css_file = current_dir / "styles" / "main.css"
-st.set_page_config(page_icon="📽️", page_title="Letterboxd Analysis", layout='wide')
+st.set_page_config(page_icon="📽️", page_title="Letterboxd Analysis", layout='wide', initial_sidebar_state=st.session_state.sidebar_state)
 with open(css_file) as f:
     st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
+
 
 sections = ['Analyze Profile', 'Compare 2 Profile', 'Friends Ranker + Movie Recommendations']
 selected_sect = st.sidebar.selectbox('Choose mode', sections)
