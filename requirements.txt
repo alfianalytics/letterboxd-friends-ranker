@@ -5,3 +5,4 @@ numpy
 streamlit
 pathlib
 datetime
+htbuilder
