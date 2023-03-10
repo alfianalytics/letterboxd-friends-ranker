@@ -433,7 +433,7 @@ if selected_sect == sections[0]:
         df_genre_merged = pd.merge(df_film, df_genre)
         df_temp = df_genre['genre'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
-        df_temp = df_temp[df_temp['count'] != 1].reset_index(drop=True)
+        df_temp = df_temp[df_temp['count'] > df_film.shape[0]/100].reset_index(drop=True)
         df_genre_merged['rating'] = df_genre_merged['rating'].astype(float)
         df_temp_2 = df_genre_merged.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
