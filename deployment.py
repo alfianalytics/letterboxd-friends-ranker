@@ -56,7 +56,7 @@ def scrape_films(username):
                 movies_dict['liked'].append(movie.find('span', {'class': 'like'})!=None)
                 movies_dict['link'].append(movie.find('div')['data-target-link'])
     else:
-        for i in range(len(li_pagination)):
+        for i in range(int(li_pagination[-1].find('a').get_text().strip())):
             url = DOMAIN + "/" + username + "/films/page/" + str(i+1)
             url_page = requests.get(url)
             if url_page.status_code != 200:
