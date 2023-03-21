@@ -585,7 +585,9 @@ elif selected_sect == sections[1]:
     st.write("Still not ready hehe")
 elif selected_sect == sections[2]:
     st.title('📽️ Letterboxd Friends Ranker (+ Movie Recommendations)')
-    st.write("See which friend has the most similar taste in movies to yours based on the ratings and likes of the movies you both have watched 🍿")
+    st.write("""See which friend has the most similar taste in movies to yours based on the ratings and likes of the movies you
+    both have watched 🍿. Read my **[Medium article](https://medium.com/@alf.19x/letterboxd-friends-ranker-simple-movie-recommendation-system-80a38dcfb0da)**
+    about this.""")
     with st.expander("ℹ️ What will this app do?"):
         st.markdown("""
         - Scrape your rated movies
