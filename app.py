@@ -757,7 +757,7 @@ elif selected_sect == sections[1]:
                 x='ltw_ratio:Q',
                 y='watched_by:Q',
                 color=alt.Color('index', scale=alt.Scale(range=["#00b020", "#ff8000"])),
-                tooltip=['title', 'year', 'rating', 'avg_rating', 'watched_by', 'ltw_ratio'],
+                tooltip=['title', 'year', 'index', 'rating', 'avg_rating', 'no_of_rate', 'watched_by', 'ltw_ratio'],
             ).interactive(), use_container_width=True)
         with st.expander("Full Data"):
             st.dataframe(df_recom)
