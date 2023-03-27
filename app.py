@@ -646,6 +646,14 @@ elif selected_sect == sections[1]:
             # export file
             df_friends.to_pickle('log/{0}_dff.pickle'.format(filename))
             df_a.to_pickle('log/{0}_dfa.pickle'.format(filename))
+            df_recom = recommend_movies(df_friends, friends_data, df_a)
+            df_recom = df_recom.sort_values('index', ascending=False).reset_index(drop=True)
+            df_recom = df_recom[df_recom['no_of_rate'] > 1].reset_index(drop=True)
+            df_recom = df_recom.iloc[:100]
+            df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom = scrape_films_details(df_recom)
+            df_recom = pd.merge(df_recom, df_rating_recom)
+            df_recom['ltw_ratio'] = df_recom['liked_by']/df_recom['watched_by']
+            df_recom.to_pickle('log/{0}_dfr.pickle'.format(filename))
             with open('log/{0}_fdd.pickle'.format(filename), 'wb') as f:
                 pickle.dump(friends_data, f)
             with open('log/{0}_fl.pickle'.format(filename), 'wb') as f:
@@ -662,6 +670,8 @@ elif selected_sect == sections[1]:
             df_a = pd.read_pickle('log/{0}_dfa.pickle'.format(filename))
             df_friends = pd.read_pickle('log/{0}_dff.pickle'.format(filename))
             df_friends = df_friends.sort_values('total_index', ascending=False).reset_index(drop=True)
+            df_recom = pd.read_pickle('log/{0}_dfr.pickle'.format(filename))
+            df_recom['ltw_ratio'] = df_recom['liked_by']/df_recom['watched_by']
             with open('log/{0}_fdd.pickle'.format(filename), 'rb') as f:
                 friends_data = pickle.load(f)
 
@@ -720,8 +730,8 @@ elif selected_sect == sections[1]:
         
         st.write("---")
         # Recommendation
-        df_recom = recommend_movies(df_friends, friends_data, df_a)
-        df_recom = df_recom.sort_values('index', ascending=False).reset_index(drop=True)
+        
+
         st.header("🗒️ Your Top 10 Movies to Watch")
         row_movies = {}
         for i, movie in enumerate(df_recom['title']):
@@ -738,8 +748,21 @@ elif selected_sect == sections[1]:
             """.format(int(df_recom['no_of_rate'].values[i]),
                     int(df_recom['liked'].values[i]),
                     round(df_recom['rating'].values[i], 2)))
+        
+        st.write("")
+        st.write("")
+        st.subheader("Your Recommended Movies by Popularity and Likeability")
+        st.write("")
+        st.altair_chart(alt.Chart(df_recom).mark_circle(size=60).encode(
+                x='ltw_ratio:Q',
+                y='watched_by:Q',
+                color=alt.Color('index', scale=alt.Scale(range=["#00b020", "#ff8000"])),
+                tooltip=['title', 'year', 'rating', 'avg_rating', 'watched_by', 'ltw_ratio'],
+            ).interactive(), use_container_width=True)
         with st.expander("Full Data"):
-            st.dataframe(df_recom) 
+            st.dataframe(df_recom)
+            
+            
 
 
     
