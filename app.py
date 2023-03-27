@@ -19,12 +19,15 @@ with open(css_file) as f:
     st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
 
-sections = ['Analyze Profile', 'Compare 2 Profile', 'Friends Ranker + Movie Recommendations']
+# sections = ['Analyze Profile', 'Compare 2 Profile', 'Friends Ranker + Movie Recommendations']
+sections = ['Analyze Profile', 'Friends Ranker + Movie Recommendations']
 selected_sect = st.sidebar.selectbox('Choose mode', sections)
 
 if selected_sect == sections[0]:
     st.title('📽️ Letterboxd Profile Analyzer')
-    st.write("See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿")
+    st.write("""See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿.
+    Read my **[Medium article](https://medium.com/@alf.19x/letterboxd-profile-analysis-identifying-our-movie-watching-behaviour-281f913a7073)**
+    about this.""")
     with st.expander("ℹ️ What will this app do?"):
         st.markdown("""
         - Scrape your rated movies
@@ -223,9 +226,16 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), theme=None, use_container_width=True)
             st.markdown("""
-            Here is the distribution of average rating by other Letterboxd users for the movies that you've rated. Note that this is a distribution of
-            averages, which explains the lack of extreme values!
-            """)
+            Here is the distribution of average rating by other Letterboxd users for the movies that you've rated. Your movie with the lowest average
+            rating is **[{}]({})** ({}) with {}, the highest is **[{}]({})** ({}) with {}.
+            """.format(df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].min()]['title'].values[0],
+                       DOMAIN+df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].min()]['link'].values[0],
+                       df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].min()]['year'].values[0],
+                       df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].min()]['avg_rating'].values[0],
+                       df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['title'].values[0],
+                       DOMAIN+df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['link'].values[0],
+                       df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['year'].values[0],
+                       df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['avg_rating'].values[0]))
         st.write("")
 
         row_popularity = st.columns(2)
@@ -581,9 +591,9 @@ if selected_sect == sections[0]:
             
             st.markdown("{} {} {}".format(top_2, low, high))
             
+# elif selected_sect == sections[1]:
+#     st.write("Still not ready hehe")
 elif selected_sect == sections[1]:
-    st.write("Still not ready hehe")
-elif selected_sect == sections[2]:
     st.title('📽️ Letterboxd Friends Ranker (+ Movie Recommendations)')
     st.write("""See which friend has the most similar taste in movies to yours based on the ratings and likes of the movies you
     both have watched 🍿. Read my **[Medium article](https://medium.com/@alf.19x/letterboxd-friends-ranker-simple-movie-recommendation-system-80a38dcfb0da)**
