@@ -650,8 +650,11 @@ elif selected_sect == sections[1]:
             df_recom = df_recom.sort_values('index', ascending=False).reset_index(drop=True)
             df_recom = df_recom[df_recom['no_of_rate'] > 1].reset_index(drop=True)
             df_recom = df_recom.iloc[:100]
+            
             df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom = scrape_films_details(df_recom)
-            df_recom = pd.merge(df_recom, df_rating_recom)
+            df_recom = pd.merge(pd.merge(df_recom, df_rating_recom), df_genre_recom)
+            df_recom['genre'] = df_recom.groupby(['id'])['genre'].transform(lambda x: '|'.join(x))
+            df_recom = df_recom.drop_duplicates().reset_index(drop=True)
             df_recom['ltw_ratio'] = df_recom['liked_by']/df_recom['watched_by']
             df_recom.to_pickle('log/{0}_dfr.pickle'.format(filename))
             with open('log/{0}_fdd.pickle'.format(filename), 'wb') as f:
@@ -753,14 +756,27 @@ elif selected_sect == sections[1]:
         st.write("")
         st.subheader("Your Recommended Movies by Popularity and Likeability")
         st.write("")
+
+        @st.experimental_memo
+        def convert_df(df_recom):
+            return df_recom.to_csv(index=False).encode('utf-8')
+        csv = convert_df(df_recom)
         st.altair_chart(alt.Chart(df_recom).mark_circle(size=60).encode(
-                x='ltw_ratio:Q',
-                y='watched_by:Q',
+                alt.X('ltw_ratio:Q', axis=alt.Axis(title='Likeability Ratio'), scale=alt.Scale(zero=False)),
+                alt.Y('watched_by:Q', axis=alt.Axis(title='Number of Watches'), scale=alt.Scale(zero=False)),
                 color=alt.Color('index', scale=alt.Scale(range=["#00b020", "#ff8000"])),
-                tooltip=['title', 'year', 'index', 'rating', 'avg_rating', 'no_of_rate', 'watched_by', 'ltw_ratio'],
+                tooltip=['title', 'year', 'genre', 'index', 'rating', 'avg_rating', 'no_of_rate'],
             ).interactive(), use_container_width=True)
         with st.expander("Full Data"):
             st.dataframe(df_recom)
+
+            st.download_button(
+                "Download Movie Recommenations",
+                csv,
+                "{}_Movie Recommendations.csv".format(filename),
+                "text/csv",
+                key='download-csv'
+            )
             
             
 
