@@ -70,8 +70,8 @@ if selected_sect == sections[0]:
             df_genre.to_pickle('log/{0}_dfg.pickle'.format(filename))
             
             # add new log
-            new_row = {'date':str(today), 'username':username}
-            df_log = df_log.append(new_row, ignore_index=True)
+            new_row = pd.DataFrame({'date':str(today), 'username':username})
+            df_log = pd.concat(df_log, new_row)
             df_log.to_csv('log_detail.csv', index=False)
         else:
             st.write("We already have scraped your data today")
@@ -155,7 +155,9 @@ if selected_sect == sections[0]:
                 alt.X("year:O", axis=alt.Axis(labelAngle=90)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None,
+            use_container_width=True)
             st.markdown("""
             Looks like the average release date is around **{}**, with your oldest movie being **[{}]({})** ({}) and your latest being **[{}]({})** ({}).
             Your movies mostly were released in {}.
@@ -172,7 +174,9 @@ if selected_sect == sections[0]:
                 alt.X("decade", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None, 
+            use_container_width=True)
             liked = ""
             if (df_rating_merged[df_rating_merged['liked'] == True].shape[0] != 0):
                 liked = """Your favorite decade is probably **{}** since your liked movies mostly were released in that decade, with
@@ -202,7 +206,9 @@ if selected_sect == sections[0]:
                 alt.X("rating", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None,
+            use_container_width=True)
             
             if (df_rating_merged['difference'].mean() > 0):
                 ave_rat = 'higher'
@@ -224,7 +230,9 @@ if selected_sect == sections[0]:
                 alt.X("avg_rating", bin=True, axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None, 
+            use_container_width=True)
             st.markdown("""
             Here is the distribution of average rating by other Letterboxd users for the movies that you've rated. Your movie with the lowest average
             rating is **[{}]({})** ({}) with {}, the highest is **[{}]({})** ({}) with {}.
@@ -246,7 +254,9 @@ if selected_sect == sections[0]:
                 alt.X("popularity", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None,
+            use_container_width=True)
             popular = ""
             if (df_rating_merged['popularity'].value_counts().index[0] == '3 - popular'):
                 popular = "As expected, you mostly rated movies that are popular among Letterboxd users."
@@ -276,7 +286,9 @@ if selected_sect == sections[0]:
                 alt.X("likeability", axis=alt.Axis(labelAngle=0)),
                 y='count()',
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
-            ), theme=None, use_container_width=True)
+            ),
+            #theme=None,
+            use_container_width=True)
             unlikeable = ""
             if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 0):
                 if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 1):
@@ -325,7 +337,7 @@ if selected_sect == sections[0]:
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
-        n_director = df_temp.iloc[9]['count']
+        n_director = df_temp.iloc[19]['count']
         df_temp = df_temp[df_temp['count']>=n_director]
         
         # df_temp = df_temp[df_temp['count']!=1]
@@ -361,7 +373,9 @@ if selected_sect == sections[0]:
             # ), theme=None, use_container_width=True)
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 x = 'independent'
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None,
+            use_container_width=True)
             if (df_temp['liked'].max() != 0):
                 if (df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0] != df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0]):
                     st.markdown("""
@@ -401,7 +415,7 @@ if selected_sect == sections[0]:
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
         # df_temp = df_temp[df_temp['count']!=1]
-        n_actor = df_temp.iloc[9]['count']
+        n_actor = df_temp.iloc[19]['count']
         df_temp = df_temp[df_temp['count']>=n_actor]
         # df_temp = df_temp[:10]
         with row_director[1]:
@@ -428,7 +442,9 @@ if selected_sect == sections[0]:
             )
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 x = 'independent'
-            ), theme=None, use_container_width=True)
+            ),
+            #theme=None,
+            use_container_width=True)
             if (df_temp['liked'].max() != 0):
                 st.markdown("""
                 You rated **{}** movies starring **[{}]({})**. Your favorite actor is probably **[{}]({})** which you liked **{}** of
@@ -489,7 +505,9 @@ if selected_sect == sections[0]:
             #     )
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 y = 'independent'
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None,
+            use_container_width=True)
         with row_genre[1]:
             liked = ""
             if (df_temp['liked'].max() != 0):
@@ -549,7 +567,9 @@ if selected_sect == sections[0]:
                 )
             st.altair_chart(alt.layer(area, line).resolve_scale(
                 y = 'independent'
-            ), theme=None, use_container_width=True)
+            ), 
+            #theme=None, 
+            use_container_width=True)
         with row_genre_comb[1]:
             top_2 = ""
             if (pd.DataFrame(df_temp_comb['genre'][0].split(" & ")).isin(df_temp.iloc[:2]['genre'].tolist()).sum()[0] == 0):
@@ -663,8 +683,8 @@ elif selected_sect == sections[1]:
                 pickle.dump(friends_list, f)
             
             # add new log
-            new_row = {'date':str(today), 'username':username, 'ftype':ftype, 'limit':limit}
-            df_log = df_log.append(new_row, ignore_index=True)
+            new_row = pd.DataFrame({'date':str(today), 'username':username, 'ftype':ftype, 'limit':limit})
+            df_log = pd.concat(df_log, new_row)
             df_log.to_csv('log.csv', index=False)
         else:
             st.write("We already have scraped your data today")
