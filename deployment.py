@@ -31,6 +31,7 @@ def transform_ratings(some_str):
 
 
 def scrape_films(username):
+    print("==== SCRAPING FOR USERNAME {} ====".format(username))
     movies_dict = {}
     movies_dict['id'] = []
     movies_dict['title'] = []
