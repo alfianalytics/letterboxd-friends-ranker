@@ -71,7 +71,7 @@ if selected_sect == sections[0]:
             
             # add new log
             new_row = pd.DataFrame({'date':[str(today)], 'username':[username]})
-            df_log = pd.concat(df_log, new_row)
+            df_log = pd.concat([df_log, new_row]).reset_index(drop=True)
             df_log.to_csv('log_detail.csv', index=False)
         else:
             st.write("We already have scraped your data today")
@@ -684,7 +684,7 @@ elif selected_sect == sections[1]:
             
             # add new log
             new_row = pd.DataFrame({'date':[str(today)], 'username':[username], 'ftype':[ftype], 'limit':[limit]})
-            df_log = pd.concat(df_log, new_row)
+            df_log = pd.concat([df_log, new_row]).reset_index(drop=True)
             df_log.to_csv('log.csv', index=False)
         else:
             st.write("We already have scraped your data today")
