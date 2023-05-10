@@ -70,7 +70,7 @@ if selected_sect == sections[0]:
             df_genre.to_pickle('log/{0}_dfg.pickle'.format(filename))
             
             # add new log
-            new_row = pd.DataFrame({'date':str(today), 'username':username})
+            new_row = pd.DataFrame({'date':[str(today)], 'username':[username]})
             df_log = pd.concat(df_log, new_row)
             df_log.to_csv('log_detail.csv', index=False)
         else:
@@ -683,7 +683,7 @@ elif selected_sect == sections[1]:
                 pickle.dump(friends_list, f)
             
             # add new log
-            new_row = pd.DataFrame({'date':str(today), 'username':username, 'ftype':ftype, 'limit':limit})
+            new_row = pd.DataFrame({'date':[str(today)], 'username':[username], 'ftype':[ftype], 'limit':[limit]})
             df_log = pd.concat(df_log, new_row)
             df_log.to_csv('log.csv', index=False)
         else:
