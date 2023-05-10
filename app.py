@@ -335,9 +335,6 @@ if selected_sect == sections[0]:
         df_director_merged['rating'] = df_director_merged['rating'].astype(float)
         df_temp_2 = df_director_merged.groupby(['director', 'director_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
-        st.dataframe(df_temp)
-        st.dataframe(df_temp_2)
-
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
         n_director = df_temp.iloc[19]['count']

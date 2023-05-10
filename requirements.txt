@@ -1,6 +1,6 @@
 bs4
 requests
-pandas
+pandas==1.5
 numpy
 streamlit
 pathlib
