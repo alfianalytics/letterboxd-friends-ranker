@@ -220,7 +220,7 @@ def scrape_friends(username, friends_list, limit=20):
     bar = st.progress(progress)
     for username_b in friends_list:
         progress = progress+1
-        print('scraping for '+username_b)
+        print('scraping for '+username_b + ', ({})'.format(username))
         with st.spinner('scraping movies for '+username_b):
             df_b = scrape_films(username_b)
             df_b = df_b[df_b['rating']!=-1].reset_index(drop=True)
@@ -228,7 +228,7 @@ def scrape_friends(username, friends_list, limit=20):
         no_of_movies = len(pd.merge(df_a[['id']], df_b[['id']]))
         if no_of_movies >= limit:
             friends_dict['username'].append(username_b)
-            print('comparing for '+username_b)
+            print('comparing {} with {}'.format(username, username_b))
             df_liked, df_same, df_different, index = compare_ratings_friends(username, df_a, username_b, df_b)
             friends_dict['index_score'].append(index)
             friends_dict['no_of_movies'].append(no_of_movies)
@@ -292,7 +292,7 @@ def classify_likeability(ltw_ratio):
     else:
         return "4 - usually likeable"
 
-def scrape_films_details(df_film):
+def scrape_films_details(df_film, username):
     df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
     movies_rating = {}
     movies_rating['id'] = []
@@ -318,7 +318,7 @@ def scrape_films_details(df_film):
     bar = st.progress(progress)
     for link in df_film['link']:
         progress = progress+1
-        print('scraping details of '+df_film[df_film['link'] == link]['title'].values[0])
+        print('scraping details of {} [{}]'.format(df_film[df_film['link'] == link]['title'].values[0], username))
         
         with st.spinner('scraping details of '+df_film[df_film['link'] == link]['title'].values[0]):
             id_movie = df_film[df_film['link'] == link]['id'].values[0]

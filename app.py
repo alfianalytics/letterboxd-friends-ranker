@@ -60,7 +60,7 @@ if selected_sect == sections[0]:
             df_film = scrape_films(username)
             df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
             st.write("You have {0} movies to scrape".format(len(df_film)))
-            df_rating, df_actor, df_director, df_genre = scrape_films_details(df_film)
+            df_rating, df_actor, df_director, df_genre = scrape_films_details(df_film, username)
 
             # export file
             df_film.to_pickle('log/{0}_dff.pickle'.format(filename))
@@ -671,7 +671,7 @@ elif selected_sect == sections[1]:
             df_recom = df_recom[df_recom['no_of_rate'] > 1].reset_index(drop=True)
             df_recom = df_recom.iloc[:100]
             
-            df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom = scrape_films_details(df_recom)
+            df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom = scrape_films_details(df_recom, username)
             df_recom = pd.merge(pd.merge(df_recom, df_rating_recom), df_genre_recom)
             df_recom['genre'] = df_recom.groupby(['id'])['genre'].transform(lambda x: '|'.join(x))
             df_recom = df_recom.drop_duplicates().reset_index(drop=True)
