@@ -341,10 +341,10 @@ if selected_sect == sections[0]:
         df_temp = df_temp[df_temp['count']>=n_director]
         
         # df_temp = df_temp[df_temp['count']!=1]
-        
-        row_director = st.columns(2)
+        st.write("")
+        st.subheader("Your Top Directors")
+        row_director = st.columns((2,1))
         with row_director[0]:
-            st.subheader("Your Top Directors")
             st.write("")
             # st.dataframe(df_temp)
             base = alt.Chart(df_director_merged[df_director_merged['director'].isin(df_temp['director'])]).encode(
@@ -376,6 +376,7 @@ if selected_sect == sections[0]:
             ), 
             #theme=None,
             use_container_width=True)
+        with row_director[1]:
             if (df_temp['liked'].max() != 0):
                 if (df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0] != df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0]):
                     st.markdown("""
@@ -406,7 +407,7 @@ if selected_sect == sections[0]:
                             DOMAIN+df_temp[df_temp['rating']==df_temp['rating'].max()]['director_link'].values[0],
                             round(df_temp['rating'].max(), 2)))
             
-
+        
         df_temp = df_actor['actor'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'actor', 'actor':'count'}, inplace=True)
         df_actor_merged['rating'] = df_actor_merged['rating'].astype(float)
@@ -418,8 +419,10 @@ if selected_sect == sections[0]:
         n_actor = df_temp.iloc[19]['count']
         df_temp = df_temp[df_temp['count']>=n_actor]
         # df_temp = df_temp[:10]
-        with row_director[1]:
-            st.subheader("Your Top Actors")
+        st.write("")
+        st.subheader("Your Top Actors")
+        row_actor = st.columns((2,1))
+        with row_actor[0]:
             st.write("")
             # st.altair_chart(alt.Chart(df_actor_merged[df_actor_merged['actor'].isin(df_temp['actor'])]).mark_bar(tooltip=True).encode(
             #     y=alt.X("actor", sort='-x', axis=alt.Axis(labelAngle=0)),
@@ -445,6 +448,7 @@ if selected_sect == sections[0]:
             ),
             #theme=None,
             use_container_width=True)
+        with row_actor[1]:
             if (df_temp['liked'].max() != 0):
                 st.markdown("""
                 You rated **{}** movies starring **[{}]({})**. Your favorite actor is probably **[{}]({})** which you liked **{}** of
