@@ -337,7 +337,7 @@ if selected_sect == sections[0]:
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
-        n_director = df_temp.iloc[19]['count']
+        n_director = df_temp.iloc[14]['count']
         df_temp = df_temp[df_temp['count']>=n_director]
         
         # df_temp = df_temp[df_temp['count']!=1]
