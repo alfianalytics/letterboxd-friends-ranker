@@ -348,17 +348,17 @@ if selected_sect == sections[0]:
             st.write("")
             # st.dataframe(df_temp)
             base = alt.Chart(df_director_merged[df_director_merged['director'].isin(df_temp['director'])]).encode(
-                    alt.Y("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0))
+                    alt.X("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0))
                 )
             
             area = base.mark_bar(tooltip=True).encode(
-                alt.X('count()',
+                alt.Y('count()',
                     axis=alt.Axis(title='Count of Records')),
                     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             )
             line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
-                alt.Y("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0)),
-                alt.X('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                alt.X("director", sort=df_temp['director'].tolist(), axis=alt.Axis(labelAngle=0)),
+                alt.Y('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
                 color=alt.Color(value="#40bcf4"),
             )
             # st.altair_chart(alt.Chart(df_director_merged[df_director_merged['director'].isin(df_temp['director'])]).mark_bar(tooltip=True).encode(
@@ -372,7 +372,7 @@ if selected_sect == sections[0]:
             #     color=alt.Color(value="#00b020"),
             # ), theme=None, use_container_width=True)
             st.altair_chart(alt.layer(area, line).resolve_scale(
-                x = 'independent'
+                y = 'independent'
             ), 
             #theme=None,
             use_container_width=True)
@@ -430,21 +430,21 @@ if selected_sect == sections[0]:
             #     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             # ), theme=None, use_container_width=True)
             base = alt.Chart(df_actor_merged[df_actor_merged['actor'].isin(df_temp['actor'])]).encode(
-                    alt.Y("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0))
+                    alt.X("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0))
                 )
             
             area = base.mark_bar(tooltip=True).encode(
-                alt.X('count()',
+                alt.Y('count()',
                     axis=alt.Axis(title='Count of Records')),
                     color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             )
             line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
-                alt.Y("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0)),
-                alt.X('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                alt.X("actor", sort=df_temp['actor'].tolist(), axis=alt.Axis(labelAngle=0)),
+                alt.Y('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
                 color=alt.Color(value="#40bcf4"),
             )
             st.altair_chart(alt.layer(area, line).resolve_scale(
-                x = 'independent'
+                y = 'independent'
             ),
             #theme=None,
             use_container_width=True)
