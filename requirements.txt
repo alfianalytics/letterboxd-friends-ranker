@@ -6,3 +6,5 @@ streamlit
 pathlib
 datetime
 htbuilder
+google.oauth2
+google-api-python-client
