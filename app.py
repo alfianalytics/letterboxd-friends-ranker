@@ -5,9 +5,24 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import pickle
-from deployment import scrape_films_details, scrape_films, scrape_friends, list_friends, recommend_movies, DOMAIN, classify_popularity, classify_likeability
+from deployment import scrape_films_details, scrape_films, scrape_friends, list_friends, recommend_movies, DOMAIN, classify_popularity, classify_likeability, classify_runtime
 from pathlib import Path
 from datetime import date
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+
+# Create a connection object.
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=[
+        "https://www.googleapis.com/auth/spreadsheets",
+    ],
+)
+service = build('sheets', 'v4', credentials=credentials)
+sheet = service.spreadsheets()
 
 if 'sidebar_state' not in st.session_state:
     st.session_state.sidebar_state = 'collapsed'
@@ -22,13 +37,14 @@ with open(css_file) as f:
 # sections = ['Analyze Profile', 'Compare 2 Profile', 'Friends Ranker + Movie Recommendations']
 sections = ['Analyze Profile', 'Friends Ranker + Movie Recommendations']
 selected_sect = st.sidebar.selectbox('Choose mode', sections)
+mbti_types = ['ENTJ', 'ENFJ', 'ESFJ', 'ESTJ', 'ENTP', 'ENFP', 'ESFP', 'ESTP', 'INTJ', 'INFJ', 'ISFJ', 'ISTJ', 'INTP', 'INFP', 'ISFP', 'ISTP']
 
 if selected_sect == sections[0]:
     st.title('📽️ Letterboxd Profile Analyzer')
     st.write("""See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿.
     Read my **[Medium article](https://medium.com/@alf.19x/letterboxd-profile-analysis-identifying-our-movie-watching-behaviour-281f913a7073)**
     about this.""")
-    with st.expander("ℹ️ What will this app do?"):
+    with st.expander("ℹ️ What will this app do? (Updated 2023/09/02)"):
         st.markdown("""
         - Scrape your rated movies
         - Scrape your rated movies' details
@@ -38,6 +54,24 @@ if selected_sect == sections[0]:
         ⚠️ Note: It takes approximately 1 seconds to scrape details from one movie, so it will take some minutes to process
         especially when you have rated many movies.
         """)
+        st.markdown("**UPDATE 2023/09/02**")
+        st.markdown("""
+                    - Added runtime of movies
+                    - Added themes
+                    - Added top list based on standardized calculations for each details
+                    - Added more details""")
+    row_research = st.columns(2)
+    with row_research[0]:
+        with st.expander("ℹ️ Research I'm Doing (PLEASE READ)"):
+            st.markdown("""
+            Now I'm doing a personal research on whether MBTI type has effects on someone's favorite genres.
+                        Myers–Briggs Type Indicator (MBTI) is an introspective self-report questionnaire indicating differing psychological preferences in how people perceive the world and make decisions.
+                        So I need your MBTI type and I will take your genres data.
+            """)
+    with row_research[1]:
+        mbti_agree = st.checkbox("I agree to become a respondent for the author's research")
+    if mbti_agree:
+        mbti = st.selectbox('MBTI', options=sorted(mbti_types))
     username = st.text_input('Letterboxd Username')
     row_button = st.columns((6,1,1,6))
     submit = row_button[1].button('Submit')
@@ -53,14 +87,18 @@ if selected_sect == sections[0]:
     if result:
         today = date.today()
         filename = "{0}_{1}".format(str(today), username)
-        df_log = pd.read_csv("log_detail.csv")
+        # df_log = pd.read_csv("log_detail.csv")
+        result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                            range='log_detail!A1:AA1000').execute()
+        values_input = result_input.get('values', [])
+        df_log=pd.DataFrame(values_input[1:], columns=values_input[0])
         df_found = df_log[(df_log['date'] == str(today)) & (df_log['username'] == username)].reset_index(drop=True)
         if len(df_found) != 1:
             # scraping process
             df_film = scrape_films(username)
             df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
             st.write("You have {0} movies to scrape".format(len(df_film)))
-            df_rating, df_actor, df_director, df_genre = scrape_films_details(df_film, username)
+            df_rating, df_actor, df_director, df_genre, df_theme = scrape_films_details(df_film, username)
 
             # export file
             df_film.to_pickle('log/{0}_dff.pickle'.format(filename))
@@ -68,11 +106,19 @@ if selected_sect == sections[0]:
             df_actor.to_pickle('log/{0}_dfa.pickle'.format(filename))
             df_director.to_pickle('log/{0}_dfd.pickle'.format(filename))
             df_genre.to_pickle('log/{0}_dfg.pickle'.format(filename))
+            df_theme.to_pickle('log/{0}_dft.pickle'.format(filename))
             
             # add new log
             new_row = pd.DataFrame({'date':[str(today)], 'username':[username]})
             df_log = pd.concat([df_log, new_row]).reset_index(drop=True)
-            df_log.to_csv('log_detail.csv', index=False)
+            response_date = service.spreadsheets().values().update(
+                spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                valueInputOption='RAW',
+                range='log_detail!A1:AA1000',
+                body=dict(
+                    majorDimension='ROWS',
+                    values=df_log.T.reset_index().T.values.tolist())
+            ).execute()
         else:
             st.write("We already have scraped your data today")
             df_film = pd.read_pickle('log/{0}_dff.pickle'.format(filename))
@@ -80,6 +126,7 @@ if selected_sect == sections[0]:
             df_actor = pd.read_pickle('log/{0}_dfa.pickle'.format(filename))
             df_director = pd.read_pickle('log/{0}_dfd.pickle'.format(filename))
             df_genre = pd.read_pickle('log/{0}_dfg.pickle'.format(filename))
+            df_theme = pd.read_pickle('log/{0}_dft.pickle'.format(filename))
         
         st.write("---")
         st.markdown("<h1 style='text-align:center;'>👤 {0}'s Profile Analysis</h1>".format(username), unsafe_allow_html=True)
@@ -136,6 +183,7 @@ if selected_sect == sections[0]:
             )
         # data_temp = df_film['rating'].astype(str).value_counts().reset_index()
         # data_temp.rename(columns = {'index':'rating', 'rating':'count'}, inplace=True)
+        df_rating['runtime_group'] = df_rating.apply(lambda row:classify_runtime(row['runtime']), axis=1)
         df_rating['ltw_ratio'] = df_rating['liked_by']/df_rating['watched_by']
         df_rating['popularity'] = df_rating.apply(lambda row: classify_popularity(row['watched_by']), axis=1)
         df_rating['likeability'] = df_rating.apply(lambda row: classify_likeability(row['ltw_ratio']), axis=1)
@@ -157,7 +205,8 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), 
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
             st.markdown("""
             Looks like the average release date is around **{}**, with your oldest movie being **[{}]({})** ({}) and your latest being **[{}]({})** ({}).
             Your movies mostly were released in {}.
@@ -176,7 +225,8 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), 
             #theme=None, 
-            use_container_width=True)
+            use_container_width=True
+            )
             liked = ""
             if (df_rating_merged[df_rating_merged['liked'] == True].shape[0] != 0):
                 liked = """Your favorite decade is probably **{}** since your liked movies mostly were released in that decade, with
@@ -188,8 +238,40 @@ if selected_sect == sections[0]:
             """.format(df_rating_merged['decade'].value_counts().index[0], df_rating_merged['decade'].value_counts().values[0], liked))
 
         st.write("")
-        # st.dataframe(df_rating_merged)
-        
+        st.subheader("How Long are Your Movies?")
+        row_runtime = st.columns((2,1))
+        with row_runtime[0]:
+            
+            st.write("")
+            st.altair_chart(alt.Chart(df_rating_merged.loc[df_rating_merged['runtime'].notna()]).mark_bar(tooltip=True).encode(
+                alt.X("runtime_group", axis=alt.Axis(labelAngle=0), sort=["less than 30m", "30m-1h", "1h-1h 30m",
+                                "1h 30m-2h", "2h-2h 30m", "2h 30m-3h",
+                                "at least 3h"]),
+                y='count()',
+                color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            ), 
+            #theme=None,
+            use_container_width=True
+            )
+        with row_runtime[1]:
+            # st.write(df_rating_merged.loc[df_rating_merged['runtime']==df_rating_merged['runtime'].min(),'title'].values[0])
+            st.markdown("""
+            The average runtime of your movies is **{:.2f}** minutes. Your shortest movie is **[{}]({})** with **{:.0f}** minutes, and the longest is
+                        **[{}]({})** with **{:.0f}** minutes.
+            """.format(df_rating_merged['runtime'].mean(),
+            df_rating_merged.loc[df_rating_merged['runtime']==df_rating_merged['runtime'].min(),'title'].values[0],
+            DOMAIN+df_rating_merged.loc[df_rating_merged['runtime']==df_rating_merged['runtime'].min(),'link'].values[0],
+            df_rating_merged['runtime'].min(),
+            df_rating_merged.loc[df_rating_merged['runtime']==df_rating_merged['runtime'].max(),'title'].values[0],
+            DOMAIN+df_rating_merged.loc[df_rating_merged['runtime']==df_rating_merged['runtime'].max(),'link'].values[0],
+            df_rating_merged['runtime'].max()))
+            with st.expander('Shortest Movies'):
+                st.dataframe(df_rating_merged.sort_values('runtime').reset_index(drop=True).shift()[1:].head()[['title','runtime']],
+                use_container_width=True)
+            with st.expander('Longest Movies'):
+                st.dataframe(df_rating_merged.sort_values('runtime',ascending=False).reset_index(drop=True).shift()[1:].head()[['title','runtime']],
+                use_container_width=True)
+        st.write("")
         
         row_rating = st.columns(2)
         
@@ -208,7 +290,8 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), 
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
             
             if (df_rating_merged['difference'].mean() > 0):
                 ave_rat = 'higher'
@@ -223,6 +306,11 @@ if selected_sect == sections[0]:
                        DOMAIN+df_rating_merged[df_rating_merged['difference_abs'] == df_rating_merged['difference_abs'].max()]['link'].values[0],
                        df_rating_merged[df_rating_merged['difference_abs'] == df_rating_merged['difference_abs'].max()]['rating'].values[0],
                        df_rating_merged[df_rating_merged['difference_abs'] == df_rating_merged['difference_abs'].max()]['avg_rating'].values[0]))
+            with st.expander("Movies You Under Rated"):     
+                st.dataframe(df_rating_merged.sort_values('difference').reset_index(drop=True).shift()[1:].head(5)[['rating','avg_rating','liked','title']],use_container_width=True)
+            with st.expander("Movies You Over Rated"):
+                st.dataframe(df_rating_merged.sort_values('difference', ascending=False).reset_index(drop=True).shift()[1:].head(5)[['rating','avg_rating','liked','title']],use_container_width=True)
+        
         with row_rating[1]:
             st.subheader("How Do Letterboxd Users Rate Your Movies?")
             st.write("")
@@ -232,7 +320,8 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), 
             #theme=None, 
-            use_container_width=True)
+            use_container_width=True
+            )
             st.markdown("""
             Here is the distribution of average rating by other Letterboxd users for the movies that you've rated. Your movie with the lowest average
             rating is **[{}]({})** ({}) with {}, the highest is **[{}]({})** ({}) with {}.
@@ -244,6 +333,11 @@ if selected_sect == sections[0]:
                        DOMAIN+df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['link'].values[0],
                        df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['year'].values[0],
                        df_rating_merged[df_rating_merged['avg_rating'] == df_rating_merged['avg_rating'].max()]['avg_rating'].values[0]))
+            with st.expander("Lowest Rated Movies"):
+                st.dataframe(df_rating_merged.sort_values('avg_rating').reset_index(drop=True).shift()[1:].head(5)[['rating','avg_rating','liked','title']], use_container_width=True)
+            with st.expander("Highest Rated Movies"):
+                st.dataframe(df_rating_merged.sort_values('avg_rating',ascending=False).reset_index(drop=True).shift()[1:].head(5)[['rating','avg_rating','liked','title']], use_container_width=True)
+
         st.write("")
 
         row_popularity = st.columns(2)
@@ -256,7 +350,8 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ), 
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
             popular = ""
             if (df_rating_merged['popularity'].value_counts().index[0] == '3 - popular'):
                 popular = "As expected, you mostly rated movies that are popular among Letterboxd users."
@@ -279,6 +374,10 @@ if selected_sect == sections[0]:
                 - 100,001 - 1,000,000 -> popular
                 - \> 1,000,000 -> very popular
                 """)
+            with st.expander("Least Popular Movies"):
+                st.dataframe(df_rating_merged.sort_values('watched_by').reset_index(drop=True).shift()[1:].head(5)[['watched_by','liked','title']], use_container_width=True)
+            with st.expander("Most Popular Movies"):
+                st.dataframe(df_rating_merged.sort_values('watched_by', ascending=False).reset_index(drop=True).shift()[1:].head(5)[['watched_by','liked','title']], use_container_width=True)
         with row_popularity[1]:
             st.subheader("How Likeable are Your Movies?")
             st.write("")
@@ -288,7 +387,8 @@ if selected_sect == sections[0]:
                 color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
             ),
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
             unlikeable = ""
             if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 0):
                 if (df_rating_merged[(df_rating_merged['likeability'] == "1 - rarely likeable") & (df_rating_merged['liked'] == True)].shape[0] > 1):
@@ -325,6 +425,10 @@ if selected_sect == sections[0]:
                 - 0.2 - 0.4 -> often likeable
                 - \> 0.4 -> usually likeable
                 """)
+            with st.expander("Least Likeable Movies"):
+                st.dataframe(df_rating_merged.sort_values('ltw_ratio').reset_index(drop=True).shift()[1:].head(5)[['ltw_ratio','title','liked']], use_container_width=True)
+            with st.expander("Most Likeable Movies"):
+                st.dataframe(df_rating_merged.sort_values('ltw_ratio', ascending=False).reset_index(drop=True).shift()[1:].head(5)[['ltw_ratio','title','liked']], use_container_width=True)
 
 
         df_director_merged = pd.merge(df_film, df_director)
@@ -336,9 +440,13 @@ if selected_sect == sections[0]:
         df_temp_2 = df_director_merged.groupby(['director', 'director_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
-        df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
+        df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         n_director = df_temp.iloc[14]['count']
         df_temp = df_temp[df_temp['count']>=n_director]
+        scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
+        df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
+        df_weighted = pd.merge(df_temp[['director']], df_weighted, left_index=True, right_index=True)
+        df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
         
         # df_temp = df_temp[df_temp['count']!=1]
         st.write("")
@@ -375,7 +483,8 @@ if selected_sect == sections[0]:
                 y = 'independent'
             ), 
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
         with row_director[1]:
             if (df_temp['liked'].max() != 0):
                 if (df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0] != df_temp[df_temp['liked']==df_temp['liked'].max()]['director'].values[0]):
@@ -406,18 +515,49 @@ if selected_sect == sections[0]:
                             df_temp[df_temp['rating']==df_temp['rating'].max()]['director'].values[0],
                             DOMAIN+df_temp[df_temp['rating']==df_temp['rating'].max()]['director_link'].values[0],
                             round(df_temp['rating'].max(), 2)))
+            st.markdown("""
+            Based on standardized calculations:
+            1. {}
+            2. {}
+            3. {}
+            4. {}
+            5. {}
+            """.format(
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'director'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'director'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'director'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'director'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'director'],
+                       ))
+            # st.dataframe(df_weighted.sort_values('score',ascending=False).head())
             
         
+        list_weights = []
+        movie_ids = df_actor['id'].unique()
+        for movie_id in movie_ids:
+            n_actor = df_actor.loc[df_actor['id']==movie_id].shape[0]
+            for i in range(n_actor):
+                weight = 1-i/n_actor
+                list_weights.append(weight)
+        df_actor['weights'] = list_weights
+        df_temp_w = df_actor.groupby(['actor', 'actor_link'],as_index=False)['weights'].sum()
         df_temp = df_actor['actor'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'actor', 'actor':'count'}, inplace=True)
         df_actor_merged['rating'] = df_actor_merged['rating'].astype(float)
         df_temp_2 = df_actor_merged.groupby(['actor', 'actor_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
-        df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
+        df_temp = pd.merge(df_temp, df_temp_w)
+        df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         # df_temp = df_temp[df_temp['count']!=1]
         n_actor = df_temp.iloc[19]['count']
         df_temp = df_temp[df_temp['count']>=n_actor]
+        df_temp['liked_weighted'] = df_temp['liked'].astype(int)*df_temp['weights']
+        scaled = scaler.fit_transform(df_temp[['weights','liked_weighted','rating']].values)
+        df_weighted = pd.DataFrame(scaled, columns=['weights','liked_weighted','rating'])
+        df_weighted = pd.merge(df_temp[['actor']], df_weighted, left_index=True, right_index=True)
+        df_weighted['score'] = df_weighted['weights']+df_weighted['liked_weighted']+df_weighted['rating']
+
         # df_temp = df_temp[:10]
         st.write("")
         st.subheader("Your Top Actors")
@@ -447,7 +587,8 @@ if selected_sect == sections[0]:
                 y = 'independent'
             ),
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
         with row_actor[1]:
             if (df_temp['liked'].max() != 0):
                 st.markdown("""
@@ -461,8 +602,32 @@ if selected_sect == sections[0]:
                 st.markdown("""
                 You rated **{}** movies starring **[{}]({})**.
                 """.format(df_temp['count'].values[0], df_temp['actor'].values[0], DOMAIN+df_temp['actor_link'].values[0]))
+            st.markdown("""
+            Based on standardized and weighted calculations:
+            1. {}
+            2. {}
+            3. {}
+            4. {}
+            5. {}
+            6. {}
+            7. {}
+            8. {}
+            9. {}
+            10. {}
+            """.format(
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[5,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[6,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[7,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[8,'actor'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[9,'actor']
+                       ))
         st.write("")
-        st.subheader("Genre Breakdown")
+        st.subheader("Genres Breakdown")
         row_genre = st.columns((2,1))
         df_genre_merged = pd.merge(df_film, df_genre)
         df_temp = df_genre['genre'].value_counts().reset_index()
@@ -473,6 +638,31 @@ if selected_sect == sections[0]:
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
+        scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
+        df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
+        df_weighted = pd.merge(df_temp[['genre']], df_weighted, left_index=True, right_index=True)
+        df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+
+        if mbti_agree:
+            result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                            range='mbti!A1:AA1000').execute()
+            values_input = result_input.get('values', [])
+            df_log_mbti=pd.DataFrame(values_input[1:], columns=values_input[0])
+            df_mbti_genre = df_weighted.copy()
+            df_mbti_genre = df_mbti_genre.sort_values('score',ascending=False).head()
+            df_mbti_genre['mbti'] = mbti
+            df_mbti_genre['username'] = username
+            df_mbti_genre = df_mbti_genre[['username', 'mbti', 'genre', 'score']]
+            df_log_mbti = pd.concat([df_log_mbti, df_mbti_genre]).reset_index(drop=True)
+            df_log_mbti.drop_duplicates(['username','mbti','genre'], inplace=True)
+            response_date = service.spreadsheets().values().update(
+                spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                valueInputOption='RAW',
+                range='mbti!A1:AA1000',
+                body=dict(
+                    majorDimension='ROWS',
+                    values=df_log_mbti.T.reset_index().T.values.tolist())
+            ).execute()
         
         with row_genre[0]:
             
@@ -511,7 +701,8 @@ if selected_sect == sections[0]:
                 y = 'independent'
             ), 
             #theme=None,
-            use_container_width=True)
+            use_container_width=True
+            )
         with row_genre[1]:
             liked = ""
             if (df_temp['liked'].max() != 0):
@@ -528,6 +719,20 @@ if selected_sect == sections[0]:
                        df_temp[df_temp['count']==df_temp['count'].max()]['genre'].values[0],
                        df_temp[df_temp['liked']==df_temp['liked'].max()]['count'].values[0],
                        liked))
+            st.markdown("""
+            Based on standardized calculations:
+            1. {}
+            2. {}
+            3. {}
+            4. {}
+            5. {}
+            """.format(
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'genre'],
+                       ))
         
         
         df_genre_combination = pd.DataFrame(columns=df_genre_merged.columns)
@@ -550,6 +755,10 @@ if selected_sect == sections[0]:
         df_temp_comb = df_temp_comb.sort_values('count', ascending=False).reset_index(drop=True)
         n_genre = df_temp_comb.iloc[19]['count']
         df_temp_comb = df_temp_comb[df_temp_comb['count']>=n_genre]
+        scaled = scaler.fit_transform(df_temp_comb[['count','liked','rating']].values)
+        df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
+        df_weighted = pd.merge(df_temp_comb[['genre']], df_weighted, left_index=True, right_index=True)
+        df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
 
         st.subheader("Top Genre Combinations Breakdown")
         row_genre_comb = st.columns((2,1))
@@ -573,7 +782,8 @@ if selected_sect == sections[0]:
                 y = 'independent'
             ), 
             #theme=None, 
-            use_container_width=True)
+            use_container_width=True
+            )
         with row_genre_comb[1]:
             top_2 = ""
             if (pd.DataFrame(df_temp_comb['genre'][0].split(" & ")).isin(df_temp.iloc[:2]['genre'].tolist()).sum()[0] == 0):
@@ -614,6 +824,96 @@ if selected_sect == sections[0]:
                             round(df_temp_comb['rating'].max(),2))
             
             st.markdown("{} {} {}".format(top_2, low, high))
+            st.markdown("""
+            Based on standardized calculations:
+            1. {}
+            2. {}
+            3. {}
+            4. {}
+            5. {}
+            """.format(
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'genre'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'genre'],
+                       ))
+        # st.dataframe(df_rating_merged)
+
+        df_theme_merged = pd.merge(df_film, df_theme)
+
+        df_temp = df_theme['theme'].value_counts().reset_index()
+        df_temp.rename(columns = {'index':'theme', 'theme':'count'}, inplace=True)
+        df_theme_merged['rating'] = df_theme_merged['rating'].astype(float)
+        df_temp_2 = df_theme_merged.groupby(['theme']).agg({'liked':'sum', 'rating':'mean'})
+        df_temp_2 = df_temp_2.reset_index()
+        df_temp = pd.merge(df_temp_2, df_temp)
+        df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
+        n_theme = df_temp.iloc[19]['count']
+        df_temp = df_temp[df_temp['count']>=n_theme]
+        scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
+        df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
+        df_weighted = pd.merge(df_temp[['theme']], df_weighted, left_index=True, right_index=True)
+        df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+        
+        # df_temp = df_temp[df_temp['count']!=1]
+        st.write("")
+        st.subheader("Top Themes")
+        row_theme = st.columns((2,1))
+        with row_theme[0]:
+            st.write("")
+            # st.dataframe(df_temp)
+            base = alt.Chart(df_theme_merged[df_theme_merged['theme'].isin(df_temp['theme'])]).encode(
+                    alt.X("theme", sort=df_temp['theme'].tolist(), axis=alt.Axis(labelAngle=90))
+                )
+            
+            area = base.mark_bar(tooltip=True).encode(
+                alt.Y('count()',
+                    axis=alt.Axis(title='Count of Records')),
+                    color=alt.Color('liked', scale=alt.Scale(domain=[True, False], range=["#ff8000", "#00b020"]))
+            )
+            line = alt.Chart(df_temp).mark_line(interpolate='monotone').encode(
+                alt.X("theme", sort=df_temp['theme'].tolist(), axis=alt.Axis(labelAngle=90)),
+                alt.Y('rating', axis=alt.Axis(title='Average Rating', titleColor='#40bcf4'), scale=alt.Scale(zero=False)),
+                color=alt.Color(value="#40bcf4"),
+            )
+            st.altair_chart(alt.layer(area, line).resolve_scale(
+                y = 'independent'
+            ), 
+            #theme=None,
+            use_container_width=True
+            )
+        with row_theme[1]:
+            liked = ""
+            if (df_temp['liked'].max() != 0):
+                if df_temp[df_temp['liked']==df_temp['liked'].max()]['theme'].values[0]==df_temp[df_temp['count']==df_temp['count'].max()]['theme'].values[0]:
+                    liked = liked = "Your most watched and liked theme is **{}**.".format(
+                        df_temp[df_temp['liked']==df_temp['liked'].max()]['theme'].values[0])
+                else:
+                    liked = "Your most liked theme is **{}**.".format(
+                        df_temp[df_temp['liked']==df_temp['liked'].max()]['theme'].values[0])
+            ratings = """
+            You don't seem to enjoy movies with **{}** theme since you rated it the lowest. Conversely, you gave relatively high ratings on movies with **{}** theme.
+            """.format(df_temp[df_temp['rating']==df_temp['rating'].min()]['theme'].values[0],
+                       df_temp[df_temp['rating']==df_temp['rating'].max()]['theme'].values[0])
+            
+            st.markdown("{} {}".format(liked, ratings))
+            st.markdown("""
+            Based on standardized calculations:
+            1. {}
+            2. {}
+            3. {}
+            4. {}
+            5. {}
+            """.format(
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[0,'theme'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[1,'theme'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[2,'theme'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[3,'theme'],
+                df_weighted.sort_values('score',ascending=False).reset_index(drop=True).loc[4,'theme']
+                       ))
+            # st.dataframe(df_weighted.sort_values('score',ascending=False).head())
+        
             
 # elif selected_sect == sections[1]:
 #     st.write("Still not ready hehe")
@@ -658,8 +958,14 @@ elif selected_sect == sections[1]:
     if result:
         today = date.today()
         filename = "{0}_{1}_{2}_{3}".format(str(today), username, ftype, str(limit))
-        df_log = pd.read_csv("log.csv")
-        df_found = df_log[(df_log['date'] == str(today)) & (df_log['username'] == username) & (df_log['ftype'] == ftype) & (df_log['limit'] == limit)].reset_index(drop=True)
+        # df_log = pd.read_csv("log.csv")
+        result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                            range='log!A1:AA1000').execute()
+        values_input = result_input.get('values', [])
+        df_log=pd.DataFrame(values_input[1:], columns=values_input[0])
+        df_found = df_log[(df_log['date'].str.contains(str(today))) & (df_log['username'].str.contains(username))
+                          & (df_log['ftype'].str.contains(ftype)) & (df_log['limit'] == str(limit))].reset_index(drop=True)
+        
         if len(df_found) != 1:
             # scraping process
             friends_list = list_friends(username, ftype)
@@ -675,7 +981,7 @@ elif selected_sect == sections[1]:
             df_recom = df_recom[df_recom['no_of_rate'] > 1].reset_index(drop=True)
             df_recom = df_recom.iloc[:100]
             
-            df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom = scrape_films_details(df_recom, username)
+            df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom, df_theme_recom = scrape_films_details(df_recom, username)
             df_recom = pd.merge(pd.merge(df_recom, df_rating_recom), df_genre_recom)
             df_recom['genre'] = df_recom.groupby(['id'])['genre'].transform(lambda x: '|'.join(x))
             df_recom = df_recom.drop_duplicates().reset_index(drop=True)
@@ -689,7 +995,15 @@ elif selected_sect == sections[1]:
             # add new log
             new_row = pd.DataFrame({'date':[str(today)], 'username':[username], 'ftype':[ftype], 'limit':[limit]})
             df_log = pd.concat([df_log, new_row]).reset_index(drop=True)
-            df_log.to_csv('log.csv', index=False)
+            response_date = service.spreadsheets().values().update(
+                spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                valueInputOption='RAW',
+                range='log!A1:AA1000',
+                body=dict(
+                    majorDimension='ROWS',
+                    values=df_log.T.reset_index().T.values.tolist())
+            ).execute()
+            # df_log.to_csv('log.csv', index=False)
         else:
             st.write("We already have scraped your data today")
             with open('log/{0}_fl.pickle'.format(filename), 'rb') as f:
@@ -781,17 +1095,20 @@ elif selected_sect == sections[1]:
         st.subheader("Your Recommended Movies by Popularity and Likeability")
         st.write("")
 
-        @st.experimental_memo
         def convert_df(df_recom):
             return df_recom.to_csv(index=False).encode('utf-8')
         csv = convert_df(df_recom)
+        df_recom.index += 1 
         st.altair_chart(alt.Chart(df_recom).mark_circle(size=60).encode(
                 alt.X('ltw_ratio:Q', axis=alt.Axis(title='Likeability Ratio'), scale=alt.Scale(zero=False)),
                 alt.Y('watched_by:Q', axis=alt.Axis(title='Number of Watches'), scale=alt.Scale(zero=False)),
                 color=alt.Color('index', scale=alt.Scale(range=["#00b020", "#ff8000"])),
                 tooltip=['title', 'year', 'genre', 'index', 'rating', 'avg_rating', 'no_of_rate'],
-            ).interactive(), use_container_width=True)
+            ).interactive(), 
+            use_container_width=True
+            )
         with st.expander("Full Data"):
+            
             st.dataframe(df_recom)
 
             st.download_button(
