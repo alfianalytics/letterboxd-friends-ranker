@@ -441,14 +441,17 @@ if selected_sect == sections[0]:
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
-        n_director = df_temp.iloc[14]['count']
-        df_temp = df_temp[df_temp['count']>=n_director]
+        df_temp = df_temp[df_temp['count']!=1]
         scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
         df_weighted = pd.merge(df_temp[['director']], df_weighted, left_index=True, right_index=True)
         df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+        df_temp = df_temp[df_temp['director'].isin(df_weighted.sort_values('score',ascending=False).head(20)['director'].tolist())]
+        # n_director = df_temp.iloc[14]['count']
+        # df_temp = df_temp[df_temp['count']>=n_director]
         
-        # df_temp = df_temp[df_temp['count']!=1]
+        
+        
         st.write("")
         st.subheader("Your Top Directors")
         row_director = st.columns((2,1))
@@ -549,14 +552,18 @@ if selected_sect == sections[0]:
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = pd.merge(df_temp, df_temp_w)
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
-        # df_temp = df_temp[df_temp['count']!=1]
-        n_actor = df_temp.iloc[19]['count']
-        df_temp = df_temp[df_temp['count']>=n_actor]
+        df_temp = df_temp[df_temp['count']!=1]
         df_temp['liked_weighted'] = df_temp['liked'].astype(int)*df_temp['weights']
         scaled = scaler.fit_transform(df_temp[['weights','liked_weighted','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['weights','liked_weighted','rating'])
         df_weighted = pd.merge(df_temp[['actor']], df_weighted, left_index=True, right_index=True)
         df_weighted['score'] = df_weighted['weights']+df_weighted['liked_weighted']+df_weighted['rating']
+        df_temp = df_temp[df_temp['actor'].isin(df_weighted.sort_values('score',ascending=False).head(20)['actor'].tolist())]
+        
+
+        # n_actor = df_temp.iloc[19]['count']
+        # df_temp = df_temp[df_temp['count']>=n_actor]
+        
 
         # df_temp = df_temp[:10]
         st.write("")
@@ -753,12 +760,12 @@ if selected_sect == sections[0]:
         df_temp_comb_2 = df_temp_comb_2.reset_index()
         df_temp_comb = pd.merge(df_temp_comb_2, df_temp_comb)
         df_temp_comb = df_temp_comb.sort_values('count', ascending=False).reset_index(drop=True)
-        n_genre = df_temp_comb.iloc[19]['count']
-        df_temp_comb = df_temp_comb[df_temp_comb['count']>=n_genre]
         scaled = scaler.fit_transform(df_temp_comb[['count','liked','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
         df_weighted = pd.merge(df_temp_comb[['genre']], df_weighted, left_index=True, right_index=True)
         df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+        n_genre = df_temp_comb.iloc[19]['count']
+        df_temp_comb = df_temp_comb[df_temp_comb['count']>=n_genre]
 
         st.subheader("Top Genre Combinations Breakdown")
         row_genre_comb = st.columns((2,1))
@@ -849,12 +856,12 @@ if selected_sect == sections[0]:
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp)
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
-        n_theme = df_temp.iloc[19]['count']
-        df_temp = df_temp[df_temp['count']>=n_theme]
         scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
         df_weighted = pd.merge(df_temp[['theme']], df_weighted, left_index=True, right_index=True)
         df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
+        n_theme = df_temp.iloc[19]['count']
+        df_temp = df_temp[df_temp['count']>=n_theme]
         
         # df_temp = df_temp[df_temp['count']!=1]
         st.write("")
