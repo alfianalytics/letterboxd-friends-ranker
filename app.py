@@ -862,6 +862,27 @@ if selected_sect == sections[0]:
         df_weighted['score'] = df_weighted['count']+df_weighted['liked']+df_weighted['rating']
         n_theme = df_temp.iloc[19]['count']
         df_temp = df_temp[df_temp['count']>=n_theme]
+
+        if mbti_agree:
+            result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                            range='mbti_theme!A1:AA1000').execute()
+            values_input = result_input.get('values', [])
+            df_log_mbti=pd.DataFrame(values_input[1:], columns=values_input[0])
+            df_mbti_theme = df_weighted.copy()
+            df_mbti_theme = df_mbti_theme.sort_values('score',ascending=False).head()
+            df_mbti_theme['mbti'] = mbti
+            df_mbti_theme['username'] = username
+            df_mbti_theme = df_mbti_theme[['username', 'mbti', 'theme', 'score']]
+            df_log_mbti = pd.concat([df_log_mbti, df_mbti_theme]).reset_index(drop=True)
+            df_log_mbti.drop_duplicates(['username','mbti','theme'], inplace=True)
+            response_date = service.spreadsheets().values().update(
+                spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
+                valueInputOption='RAW',
+                range='mbti_theme!A1:AA1000',
+                body=dict(
+                    majorDimension='ROWS',
+                    values=df_log_mbti.T.reset_index().T.values.tolist())
+            ).execute()
         
         # df_temp = df_temp[df_temp['count']!=1]
         st.write("")
