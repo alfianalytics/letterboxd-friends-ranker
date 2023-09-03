@@ -6,6 +6,7 @@ import streamlit as st
 
 DOMAIN = "https://letterboxd.com"
 
+@st.cache_data
 def transform_ratings(some_str):
     """
     transforms raw star rating into float value
@@ -29,7 +30,7 @@ def transform_ratings(some_str):
     except:
         return -1
 
-
+@st.cache_data
 def scrape_films(username):
     print("==== SCRAPING FOR USERNAME {} ====".format(username))
     movies_dict = {}
@@ -76,6 +77,7 @@ def scrape_films(username):
     df_film = pd.DataFrame(movies_dict)    
     return df_film
 
+@st.cache_data
 def score_index(rating_x, liked_x, rating_y, liked_y):
     score = 0.0
     if ((rating_x == rating_y) & (liked_x == liked_y)):
@@ -87,6 +89,7 @@ def score_index(rating_x, liked_x, rating_y, liked_y):
         score = 1.0-(abs(rating_x-rating_y)/5)
     return score
 
+@st.cache_data
 def compare_ratings_friends(username_a, df_a, username_b, df_b):
     
     # movies they both liked
@@ -114,7 +117,7 @@ def compare_ratings_friends(username_a, df_a, username_b, df_b):
         index = 0
     return df_liked, df_same, df_different, index
 
-
+@st.cache_data
 def list_friends(username, ftype='following'):
     friends_list = []
     with st.spinner("scraping your friends list"):
@@ -204,7 +207,7 @@ def list_friends(username, ftype='following'):
                     friends_list.append(following)
     return friends_list
 
-
+@st.cache_data
 def scrape_friends(username, friends_list, limit=20):
     with st.spinner('scraping your movies'):
         df_a = scrape_films(username)
@@ -242,6 +245,7 @@ def scrape_friends(username, friends_list, limit=20):
     df_friends['total_index'] = df_friends['index_score']*df_friends['no_of_movies']
     return df_friends, friends_data, df_a
 
+@st.cache_data
 def recommend_movies(df_friends, friends_data, df_a):
     df_movies = pd.DataFrame()
     for i in friends_data.keys():
@@ -269,9 +273,11 @@ def recommend_movies(df_friends, friends_data, df_a):
     df_recom['index'] = r_w/5*df_recom['rating']+l_w*df_recom['liked']/df_recom['liked'].max()+fs_w*df_recom['friends_score']/df_recom['friends_score'].max()+nor_w*df_recom['no_of_rate']/df_recom['no_of_rate'].max()
     return df_recom
 
+@st.cache_data
 def decade_year(year):
     return str(int(year/10)*10)+"s"
 
+@st.cache_data
 def classify_popularity(watched_by):
     if (watched_by <= 10000):
         return "1 - very obscure"
@@ -282,6 +288,7 @@ def classify_popularity(watched_by):
     else:
         return "4 - very popular"
 
+@st.cache_data
 def classify_likeability(ltw_ratio):
     if (ltw_ratio <= 0.1):
         return "1 - rarely likeable"
@@ -292,6 +299,7 @@ def classify_likeability(ltw_ratio):
     else:
         return "4 - usually likeable"
 
+@st.cache_data
 def classify_runtime(runtime):
     if (pd.isnull(runtime)!=True):
         if (runtime < 30):
@@ -311,6 +319,7 @@ def classify_runtime(runtime):
     else:
         return np.nan
 
+@st.cache_data
 def scrape_films_details(df_film, username):
     df_film = df_film[df_film['rating']!=-1].reset_index(drop=True)
     movies_rating = {}
