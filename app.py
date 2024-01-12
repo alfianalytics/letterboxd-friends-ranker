@@ -114,7 +114,7 @@ if selected_sect == sections[0]:
             response_date = service.spreadsheets().values().update(
                 spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
                 valueInputOption='RAW',
-                range='log_detail!A1:AA1000',
+                range='log_detail!A:AA',
                 body=dict(
                     majorDimension='ROWS',
                     values=df_log.T.reset_index().T.values.tolist())
@@ -652,7 +652,7 @@ if selected_sect == sections[0]:
 
         if mbti_agree:
             result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
-                            range='mbti!A1:AA1000').execute()
+                            range='mbti!A:AA').execute()
             values_input = result_input.get('values', [])
             df_log_mbti=pd.DataFrame(values_input[1:], columns=values_input[0])
             df_mbti_genre = df_weighted.copy()
@@ -665,7 +665,7 @@ if selected_sect == sections[0]:
             response_date = service.spreadsheets().values().update(
                 spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
                 valueInputOption='RAW',
-                range='mbti!A1:AA1000',
+                range='mbti!A:AA',
                 body=dict(
                     majorDimension='ROWS',
                     values=df_log_mbti.T.reset_index().T.values.tolist())
@@ -865,7 +865,7 @@ if selected_sect == sections[0]:
 
         if mbti_agree:
             result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
-                            range='mbti_theme!A1:AA1000').execute()
+                            range='mbti_theme!A:AA').execute()
             values_input = result_input.get('values', [])
             df_log_mbti=pd.DataFrame(values_input[1:], columns=values_input[0])
             df_mbti_theme = df_weighted.copy()
@@ -878,7 +878,7 @@ if selected_sect == sections[0]:
             response_date = service.spreadsheets().values().update(
                 spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
                 valueInputOption='RAW',
-                range='mbti_theme!A1:AA1000',
+                range='mbti_theme!A:AA',
                 body=dict(
                     majorDimension='ROWS',
                     values=df_log_mbti.T.reset_index().T.values.tolist())
@@ -988,7 +988,7 @@ elif selected_sect == sections[1]:
         filename = "{0}_{1}_{2}_{3}".format(str(today), username, ftype, str(limit))
         # df_log = pd.read_csv("log.csv")
         result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
-                            range='log!A1:AA1000').execute()
+                            range='log!A:AA').execute()
         values_input = result_input.get('values', [])
         df_log=pd.DataFrame(values_input[1:], columns=values_input[0])
         df_found = df_log[(df_log['date'].str.contains(str(today))) & (df_log['username'].str.contains(username))
@@ -1026,7 +1026,7 @@ elif selected_sect == sections[1]:
             response_date = service.spreadsheets().values().update(
                 spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
                 valueInputOption='RAW',
-                range='log!A1:AA1000',
+                range='log!A:AA',
                 body=dict(
                     majorDimension='ROWS',
                     values=df_log.T.reset_index().T.values.tolist())
