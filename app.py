@@ -89,7 +89,7 @@ if selected_sect == sections[0]:
         filename = "{0}_{1}".format(str(today), username)
         # df_log = pd.read_csv("log_detail.csv")
         result_input = sheet.values().get(spreadsheetId=st.secrets['SAMPLE_SPREADSHEET_ID_input'],
-                            range='log_detail!A1:AA1000').execute()
+                            range='log_detail!A:AA').execute()
         values_input = result_input.get('values', [])
         df_log=pd.DataFrame(values_input[1:], columns=values_input[0])
         df_found = df_log[(df_log['date'] == str(today)) & (df_log['username'] == username)].reset_index(drop=True)
