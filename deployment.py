@@ -254,13 +254,14 @@ def recommend_movies(df_friends, friends_data, df_a):
         df_movies = pd.concat([df_movies, df_friend_movies])
         
     df_no_of_rate = pd.DataFrame(df_movies.id.value_counts()).reset_index()
-    df_no_of_rate.rename({'index':'id', 'id':'no_of_rate'}, axis='columns', inplace=True)
+    # df_no_of_rate.rename({'index':'id', 'id':'no_of_rate'}, axis='columns', inplace=True)
+    df_no_of_rate.rename({'count':'no_of_rate'}, axis='columns', inplace=True)
     
     df_recom = df_movies.groupby(['id', 'title', 'link']).agg({'rating':'mean', 'liked':'sum', 'friends_score':'mean'})
     df_recom = df_recom.reset_index()
-    df_recom = pd.merge(df_recom, df_no_of_rate)
+    df_recom = pd.merge(df_recom, df_no_of_rate, left_on='id', right_on='id')
     
-    df_recom = pd.merge(df_recom, df_a[['id']], how="outer", indicator=True)
+    df_recom = pd.merge(df_recom, df_a[['id']], how="outer", left_on='id', right_on='id', indicator=True)
     df_recom = df_recom[df_recom['_merge'] == 'left_only']
     del df_recom['_merge']
     
