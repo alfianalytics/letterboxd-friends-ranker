@@ -187,7 +187,7 @@ if selected_sect == sections[0]:
         df_rating['ltw_ratio'] = df_rating['liked_by']/df_rating['watched_by']
         df_rating['popularity'] = df_rating.apply(lambda row: classify_popularity(row['watched_by']), axis=1)
         df_rating['likeability'] = df_rating.apply(lambda row: classify_likeability(row['ltw_ratio']), axis=1)
-        df_rating_merged = pd.merge(df_film, df_rating)
+        df_rating_merged = pd.merge(df_film, df_rating, left_on='id', right_on='id')
         df_rating_merged['rating'] = df_rating_merged['rating'].astype(float)
         df_rating_merged['avg_rating'] = df_rating_merged['avg_rating'].astype(float)
         df_rating_merged['difference'] = df_rating_merged['rating']-df_rating_merged['avg_rating']
@@ -431,15 +431,15 @@ if selected_sect == sections[0]:
                 st.dataframe(df_rating_merged.sort_values('ltw_ratio', ascending=False).reset_index(drop=True).shift()[1:].head(5)[['ltw_ratio','title','liked']], use_container_width=True)
 
 
-        df_director_merged = pd.merge(df_film, df_director)
-        df_actor_merged = pd.merge(df_film, df_actor)
+        df_director_merged = pd.merge(df_film, df_director, left_on='id', right_on='id')
+        df_actor_merged = pd.merge(df_film, df_actor, left_on='id', right_on='id')
 
         df_temp = df_director['director'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'director', 'director':'count'}, inplace=True)
         df_director_merged['rating'] = df_director_merged['rating'].astype(float)
         df_temp_2 = df_director_merged.groupby(['director', 'director_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
-        df_temp = pd.merge(df_temp_2, df_temp)
+        df_temp = pd.merge(df_temp_2, df_temp, left_on='director', right_on='director')
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         df_temp = df_temp[df_temp['count']!=1]
         scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
@@ -549,8 +549,8 @@ if selected_sect == sections[0]:
         df_actor_merged['rating'] = df_actor_merged['rating'].astype(float)
         df_temp_2 = df_actor_merged.groupby(['actor', 'actor_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
-        df_temp = pd.merge(df_temp_2, df_temp)
-        df_temp = pd.merge(df_temp, df_temp_w)
+        df_temp = pd.merge(df_temp_2, df_temp, left_on='actor', right_on='actor')
+        df_temp = pd.merge(df_temp, df_temp_w, left_on='actor', right_on='actor')
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         df_temp = df_temp[df_temp['count']!=1]
         df_temp['liked_weighted'] = df_temp['liked'].astype(int)*df_temp['weights']
@@ -636,14 +636,14 @@ if selected_sect == sections[0]:
         st.write("")
         st.subheader("Genres Breakdown")
         row_genre = st.columns((2,1))
-        df_genre_merged = pd.merge(df_film, df_genre)
+        df_genre_merged = pd.merge(df_film, df_genre, left_on='id', right_on='id')
         df_temp = df_genre['genre'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
         df_temp = df_temp[df_temp['count'] > df_film.shape[0]/100].reset_index(drop=True)
         df_genre_merged['rating'] = df_genre_merged['rating'].astype(float)
         df_temp_2 = df_genre_merged.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
-        df_temp = pd.merge(df_temp_2, df_temp)
+        df_temp = pd.merge(df_temp_2, df_temp, left_on='genre', right_on='genre')
         df_temp = df_temp.sort_values('count', ascending=False).reset_index(drop=True)
         scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
@@ -758,7 +758,7 @@ if selected_sect == sections[0]:
         df_temp_comb_2 = df_genre_combination.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
         df_genre_combination['liked'] = df_genre_combination['liked'].astype(bool)
         df_temp_comb_2 = df_temp_comb_2.reset_index()
-        df_temp_comb = pd.merge(df_temp_comb_2, df_temp_comb)
+        df_temp_comb = pd.merge(df_temp_comb_2, df_temp_comb, left_on='genre', right_on='genre')
         df_temp_comb = df_temp_comb.sort_values('count', ascending=False).reset_index(drop=True)
         scaled = scaler.fit_transform(df_temp_comb[['count','liked','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
@@ -847,14 +847,14 @@ if selected_sect == sections[0]:
                        ))
         # st.dataframe(df_rating_merged)
 
-        df_theme_merged = pd.merge(df_film, df_theme)
+        df_theme_merged = pd.merge(df_film, df_theme, left_on='id', right_on='id')
 
         df_temp = df_theme['theme'].value_counts().reset_index()
         df_temp.rename(columns = {'index':'theme', 'theme':'count'}, inplace=True)
         df_theme_merged['rating'] = df_theme_merged['rating'].astype(float)
         df_temp_2 = df_theme_merged.groupby(['theme']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
-        df_temp = pd.merge(df_temp_2, df_temp)
+        df_temp = pd.merge(df_temp_2, df_temp, left_on='theme', right_on='theme')
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         scaled = scaler.fit_transform(df_temp[['count','liked','rating']].values)
         df_weighted = pd.DataFrame(scaled, columns=['count','liked','rating'])
@@ -1010,7 +1010,7 @@ elif selected_sect == sections[1]:
             df_recom = df_recom.iloc[:100]
             
             df_rating_recom, df_actor_recom, df_director_recom, df_genre_recom, df_theme_recom = scrape_films_details(df_recom, username)
-            df_recom = pd.merge(pd.merge(df_recom, df_rating_recom), df_genre_recom)
+            df_recom = pd.merge(pd.merge(df_recom, df_rating_recom, left_on='id', right_on='id'), df_genre_recom, left_on='id', right_on='id')
             df_recom['genre'] = df_recom.groupby(['id'])['genre'].transform(lambda x: '|'.join(x))
             df_recom = df_recom.drop_duplicates().reset_index(drop=True)
             df_recom['ltw_ratio'] = df_recom['liked_by']/df_recom['watched_by']
