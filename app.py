@@ -435,10 +435,15 @@ if selected_sect == sections[0]:
         df_actor_merged = pd.merge(df_film, df_actor, left_on='id', right_on='id')
 
         df_temp = df_director['director'].value_counts().reset_index()
-        df_temp.rename(columns = {'index':'director', 'director':'count'}, inplace=True)
+        # df_temp.rename(columns = {'index':'director', 'director':'count'}, inplace=True)
+
+
         df_director_merged['rating'] = df_director_merged['rating'].astype(float)
         df_temp_2 = df_director_merged.groupby(['director', 'director_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
+
+        # st.dataframe(df_temp_2)
+        
         df_temp = pd.merge(df_temp_2, df_temp, left_on='director', right_on='director')
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         df_temp = df_temp[df_temp['count']!=1]
@@ -545,12 +550,13 @@ if selected_sect == sections[0]:
         df_actor['weights'] = list_weights
         df_temp_w = df_actor.groupby(['actor', 'actor_link'],as_index=False)['weights'].sum()
         df_temp = df_actor['actor'].value_counts().reset_index()
-        df_temp.rename(columns = {'index':'actor', 'actor':'count'}, inplace=True)
+        # df_temp.rename(columns = {'index':'actor', 'actor':'count'}, inplace=True)
         df_actor_merged['rating'] = df_actor_merged['rating'].astype(float)
         df_temp_2 = df_actor_merged.groupby(['actor', 'actor_link']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
         df_temp = pd.merge(df_temp_2, df_temp, left_on='actor', right_on='actor')
-        df_temp = pd.merge(df_temp, df_temp_w, left_on='actor', right_on='actor')
+
+        df_temp = pd.merge(df_temp, df_temp_w, left_on=['actor','actor_link'], right_on=['actor','actor_link'])
         df_temp = df_temp.sort_values(['count','liked','rating'], ascending=False).reset_index(drop=True)
         df_temp = df_temp[df_temp['count']!=1]
         df_temp['liked_weighted'] = df_temp['liked'].astype(int)*df_temp['weights']
@@ -638,7 +644,7 @@ if selected_sect == sections[0]:
         row_genre = st.columns((2,1))
         df_genre_merged = pd.merge(df_film, df_genre, left_on='id', right_on='id')
         df_temp = df_genre['genre'].value_counts().reset_index()
-        df_temp.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
+        # df_temp.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
         df_temp = df_temp[df_temp['count'] > df_film.shape[0]/100].reset_index(drop=True)
         df_genre_merged['rating'] = df_genre_merged['rating'].astype(float)
         df_temp_2 = df_genre_merged.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
@@ -752,12 +758,14 @@ if selected_sect == sections[0]:
                     df_genre_combination = pd.concat([df_genre_combination, df_ha]).reset_index(drop=True)
         
         df_temp_comb = df_genre_combination['genre'].value_counts().reset_index()
-        df_temp_comb.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
+        # df_temp_comb.rename(columns = {'index':'genre', 'genre':'count'}, inplace=True)
         df_genre_combination['rating'] = df_genre_combination['rating'].astype(float)
         df_genre_combination['liked'] = df_genre_combination['liked'].astype(int)
         df_temp_comb_2 = df_genre_combination.groupby(['genre']).agg({'liked':'sum', 'rating':'mean'})
         df_genre_combination['liked'] = df_genre_combination['liked'].astype(bool)
         df_temp_comb_2 = df_temp_comb_2.reset_index()
+    
+
         df_temp_comb = pd.merge(df_temp_comb_2, df_temp_comb, left_on='genre', right_on='genre')
         df_temp_comb = df_temp_comb.sort_values('count', ascending=False).reset_index(drop=True)
         scaled = scaler.fit_transform(df_temp_comb[['count','liked','rating']].values)
@@ -850,7 +858,7 @@ if selected_sect == sections[0]:
         df_theme_merged = pd.merge(df_film, df_theme, left_on='id', right_on='id')
 
         df_temp = df_theme['theme'].value_counts().reset_index()
-        df_temp.rename(columns = {'index':'theme', 'theme':'count'}, inplace=True)
+        # df_temp.rename(columns = {'index':'theme', 'theme':'count'}, inplace=True)
         df_theme_merged['rating'] = df_theme_merged['rating'].astype(float)
         df_temp_2 = df_theme_merged.groupby(['theme']).agg({'liked':'sum', 'rating':'mean'})
         df_temp_2 = df_temp_2.reset_index()
