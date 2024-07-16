@@ -1,6 +1,7 @@
 bs4
 requests
-pandas
+pandas==1.5
+altair==5.2.0
 numpy
 streamlit
 pathlib
