@@ -365,8 +365,10 @@ def scrape_films_details(df_film, username):
                 if sc.string != None:
                     if "ratingValue" in sc.string:
                         rating = sc.string.split("ratingValue")[1].split(",")[0][2:]
-                    if "releaseYear" in sc.string:
-                        year = sc.string.split("releaseYear")[1].split(",")[0][2:].replace('"','')
+                    # if "releaseYear" in sc.string:
+                    #     year = sc.string.split("releaseYear")[1].split(",")[0][2:].replace('"','')
+                    if "startDate" in sc.string:
+                        year = sc.string.split("startDate")[1].split(",")[0][3:7]
             url_stats = DOMAIN + "/csi" + link + "stats"
             url_stats_page = requests.get(url_stats)
             soup_stats = BeautifulSoup(url_stats_page.content, 'html.parser')
