@@ -353,7 +353,7 @@ if selected_sect == sections[0]:
             use_container_width=True
             )
             popular = ""
-            if (df_rating_merged['popularity'].value_counts().index[0] in ['3 - popular','4 - very populer']):
+            if (df_rating_merged['popularity'].value_counts().index[0] in ['3 - popular','4 - very popular']):
                 popular = "As expected, you mostly rated movies that are popular among Letterboxd users."
             else:
                 popular = "Wow, you have a very unique taste because you mostly don't watch popular movies."
