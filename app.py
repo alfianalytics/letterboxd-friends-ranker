@@ -44,6 +44,7 @@ if selected_sect == sections[0]:
     st.write("""See how you rate your movies, what movies you like, the genres, the actors and directors of those movies 🍿.
     Read my **[Medium article](https://medium.com/@alf.19x/letterboxd-profile-analysis-identifying-our-movie-watching-behaviour-281f913a7073)**
     about this.""")
+    st.write("Support me: **[buymeacofee](https://buymeacoffee.com/alfianalytics)**")
     with st.expander("ℹ️ What will this app do? (Updated 2023/09/02)"):
         st.markdown("""
         - Scrape your rated movies
@@ -958,6 +959,7 @@ elif selected_sect == sections[1]:
     st.write("""See which friend has the most similar taste in movies to yours based on the ratings and likes of the movies you
     both have watched 🍿. Read my **[Medium article](https://medium.com/@alf.19x/letterboxd-friends-ranker-simple-movie-recommendation-system-80a38dcfb0da)**
     about this.""")
+    st.write("Support me: **[buymeacofee](https://buymeacoffee.com/alfianalytics)**")
     with st.expander("ℹ️ What will this app do?"):
         st.markdown("""
         - Scrape your rated movies
