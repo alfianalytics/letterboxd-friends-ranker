@@ -11,7 +11,25 @@ from datetime import date
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from sklearn.preprocessing import StandardScaler
+import os
+import datetime
 
+
+def delete_old_log_files(log_folder_path):
+    today = date.today()
+    today_str = str(today)
+
+    for filename in os.listdir(log_folder_path):
+        filepath = os.path.join(log_folder_path, filename)
+
+        # Make sure it's a file, not a subdirectory
+        if os.path.isfile(filepath):
+            # Split by '_' and compare the first part
+            if filename.split('_')[0] != today_str:
+                os.remove(filepath)
+                print(f"Deleted: {filename}")
+
+delete_old_log_files('log')
 scaler = StandardScaler()
 
 # Create a connection object.

@@ -1,10 +1,12 @@
 from bs4 import BeautifulSoup
-import requests
+# import requests
+import cloudscraper
 import pandas as pd
 import numpy as np
 import streamlit as st
 
 DOMAIN = "https://letterboxd.com"
+scraper = cloudscraper.create_scraper()
 
 @st.cache_data
 def transform_ratings(some_str):
@@ -40,9 +42,9 @@ def scrape_films(username):
     movies_dict['liked'] = []
     movies_dict['link'] = []
     url = DOMAIN + "/" + username + "/films/"
-    url_page = requests.get(url)
+    url_page = scraper.get(url)
     if url_page.status_code != 200:
-        encounter_error("")
+        st.error("Error")
     soup = BeautifulSoup(url_page.content, 'html.parser')
     
     # check number of pages
@@ -60,9 +62,9 @@ def scrape_films(username):
     else:
         for i in range(int(li_pagination[-1].find('a').get_text().strip())):
             url = DOMAIN + "/" + username + "/films/page/" + str(i+1)
-            url_page = requests.get(url)
+            url_page = scraper.get(url)
             if url_page.status_code != 200:
-                encounter_error("")
+                st.error("Error")
             soup = BeautifulSoup(url_page.content, 'html.parser')
             ul = soup.find("ul", {"class": "poster-list"})
             if (ul != None):
@@ -124,7 +126,7 @@ def list_friends(username, ftype='following'):
         if ((ftype == 'following') | (ftype == 'followers')):
             url = DOMAIN + "/" + username + "/{0}/".format(ftype)
             while True:
-                url_page = requests.get(url)
+                url_page = scraper.get(url)
                 soup = BeautifulSoup(url_page.content, 'html.parser')
                 friends = soup.findAll('div', {'class':'person-summary'})
 
@@ -140,7 +142,7 @@ def list_friends(username, ftype='following'):
         elif (ftype == 'both'):
             url = DOMAIN + "/" + username + "/following/"
             while True:
-                url_page = requests.get(url)
+                url_page = scraper.get(url)
                 soup = BeautifulSoup(url_page.content, 'html.parser')
                 friends = soup.findAll('div', {'class':'person-summary'})
 
@@ -155,7 +157,7 @@ def list_friends(username, ftype='following'):
                     url = DOMAIN + soup.find('a', {'class':'next'})['href']
             url = DOMAIN + "/" + username + "/followers/"
             while True:
-                url_page = requests.get(url)
+                url_page = scraper.get(url)
                 soup = BeautifulSoup(url_page.content, 'html.parser')
                 friends = soup.findAll('div', {'class':'person-summary'})
 
@@ -173,7 +175,7 @@ def list_friends(username, ftype='following'):
             following_list = []
             url = DOMAIN + "/" + username + "/following/"
             while True:
-                url_page = requests.get(url)
+                url_page = scraper.get(url)
                 soup = BeautifulSoup(url_page.content, 'html.parser')
                 friends = soup.findAll('div', {'class':'person-summary'})
 
@@ -189,7 +191,7 @@ def list_friends(username, ftype='following'):
             followers_list = []
             url = DOMAIN + "/" + username + "/followers/"
             while True:
-                url_page = requests.get(url)
+                url_page = scraper.get(url)
                 soup = BeautifulSoup(url_page.content, 'html.parser')
                 friends = soup.findAll('div', {'class':'person-summary'})
 
@@ -357,9 +359,9 @@ def scrape_films_details(df_film, username):
         with st.spinner('scraping details of '+df_film[df_film['link'] == link]['title'].values[0]):
             id_movie = df_film[df_film['link'] == link]['id'].values[0]
             url_movie = DOMAIN + link
-            url_movie_page = requests.get(url_movie)
+            url_movie_page = scraper.get(url_movie)
             if url_movie_page.status_code != 200:
-                encounter_error("")
+                st.error("Error")
             soup_movie = BeautifulSoup(url_movie_page.content, 'html.parser')
             for sc in soup_movie.findAll("script"):
                 if sc.string != None:
@@ -370,7 +372,7 @@ def scrape_films_details(df_film, username):
                     if "startDate" in sc.string:
                         year = sc.string.split("startDate")[1].split(",")[0][3:7]
             url_stats = DOMAIN + "/csi" + link + "stats"
-            url_stats_page = requests.get(url_stats)
+            url_stats_page = scraper.get(url_stats)
             soup_stats = BeautifulSoup(url_stats_page.content, 'html.parser')
             watched_by = int(soup_stats.findAll('li')[0].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
             liked_by = int(soup_stats.findAll('li')[2].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
