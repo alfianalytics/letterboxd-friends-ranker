@@ -374,8 +374,8 @@ def scrape_films_details(df_film, username):
             url_stats = DOMAIN + "/csi" + link + "stats"
             url_stats_page = scraper.get(url_stats)
             soup_stats = BeautifulSoup(url_stats_page.content, 'html.parser')
-            watched_by = int(soup_stats.findAll('li')[0].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
-            liked_by = int(soup_stats.findAll('li')[2].find('a')['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
+            watched_by = int(soup_stats.findAll('a')[0]['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
+            liked_by = int(soup_stats.findAll('a')[2]['title'].replace(u'\xa0', u' ').split(" ")[2].replace(u',', u''))
             try:
                 runtime = int(soup_movie.find('p',{'class':'text-link text-footer'}).get_text().strip().split('\xa0')[0])
             except:
