@@ -50,7 +50,7 @@ def scrape_films(username):
     # check number of pages
     li_pagination = soup.findAll("li", {"class": "paginate-page"})
     if len(li_pagination) == 0:
-        ul = soup.find("ul", {"class": "poster-list"})
+        ul = soup.find("ul", {"class": "grid"})
         if (ul != None):
             movies = ul.find_all("li")
             for movie in movies:
@@ -66,7 +66,7 @@ def scrape_films(username):
             if url_page.status_code != 200:
                 st.error("Error")
             soup = BeautifulSoup(url_page.content, 'html.parser')
-            ul = soup.find("ul", {"class": "poster-list"})
+            ul = soup.find("ul", {"class": "grid"})
             if (ul != None):
                 movies = ul.find_all("li")
                 for movie in movies:
