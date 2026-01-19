@@ -64,6 +64,9 @@ if selected_sect == sections[0]:
     about this.""")
     st.write("Check my new app to discover your **[Letterboxd Personality Type](https://letterboxd-personality-type.streamlit.app)**!")
     st.write("Support me: **[buymeacofee](https://buymeacoffee.com/alfianalytics)**")
+    st.write("""I'm thinking about building a more advanced Wrapped-style Letterboxd analysis.
+    It won't be free, so before I do that, I'd really like to know what you think.
+    This will take less than 30 seconds: **[form](https://docs.google.com/forms/d/e/1FAIpQLSds5g1rnvnDwYP3HUyYZknI7Cyd0y6rFseXrUrORj78T5XoXw/viewform?usp=dialog)**""")
     with st.expander("ℹ️ What will this app do? (Updated 2023/09/02)"):
         st.markdown("""
         - Scrape your rated movies
